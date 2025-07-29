@@ -5,7 +5,7 @@ import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,27 @@ class EmailSender:
         self.smtp_port = smtp_port
         self.sender_email = sender_email
         self.sender_password = sender_password
+    
+    def format_market_cap(self, market_cap: Optional[float]) -> str:
+        """Format market cap value for display.
+        
+        Args:
+            market_cap: Market cap value in dollars
+            
+        Returns:
+            Formatted string (e.g., $1.2T, $450M, $25.7B)
+        """
+        if market_cap is None:
+            return "N/A"
+        
+        if market_cap >= 1_000_000_000_000:  # Trillion
+            return f"${market_cap / 1_000_000_000_000:.1f}T"
+        elif market_cap >= 1_000_000_000:  # Billion
+            return f"${market_cap / 1_000_000_000:.1f}B"
+        elif market_cap >= 1_000_000:  # Million
+            return f"${market_cap / 1_000_000:.1f}M"
+        else:
+            return f"${market_cap:,.0f}"
     
     def create_email_html(self, stocks: List[Dict[str, Any]]) -> str:
         """Create HTML content for the email.
@@ -59,6 +80,7 @@ class EmailSender:
             change_percent = stock.get('changesPercentage', 'N/A')
             price = stock.get('price', 0)
             previous_close = stock.get('previousClose', 0)
+            market_cap = stock.get('mktCap')
             
             # Clean up percentage display
             if isinstance(change_percent, str):
@@ -70,6 +92,9 @@ class EmailSender:
             except:
                 change_display = change_percent
             
+            # Format market cap
+            market_cap_display = self.format_market_cap(market_cap)
+            
             table_rows.append(f"""
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{symbol}</td>
@@ -77,6 +102,7 @@ class EmailSender:
                     <td style="padding: 10px; border-bottom: 1px solid #eee; color: #0a0; font-weight: bold;">{change_display}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">${price:.2f}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">${previous_close:.2f}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{market_cap_display}</td>
                 </tr>
             """)
         
@@ -93,6 +119,7 @@ class EmailSender:
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">% Gain</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Current Price</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Previous Close</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Market Cap</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -1,6 +1,7 @@
 """Financial Modeling Prep API client for fetching stock gainers."""
 
 import logging
+import time
 from typing import List, Dict, Any, Optional
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
@@ -14,6 +15,7 @@ class FMPAPIClient:
     
     BASE_URL = "https://financialmodelingprep.com/api/v3"
     GAINERS_ENDPOINT = "/stock_market/gainers"
+    PROFILE_ENDPOINT = "/profile"
     
     def __init__(self, api_key: str):
         """Initialize the API client with an API key.
@@ -105,6 +107,61 @@ class FMPAPIClient:
         
         logger.info(f"Filtered {len(filtered_stocks)} stocks with gains >= {min_gain}%")
         return filtered_stocks
+    
+    def get_company_profile(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch company profile data including market cap.
+        
+        Args:
+            symbol: Stock symbol to fetch profile for
+            
+        Returns:
+            Company profile dictionary or None if error
+        """
+        url = f"{self.BASE_URL}{self.PROFILE_ENDPOINT}/{symbol}"
+        params = {'apikey': self.api_key}
+        
+        try:
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data and isinstance(data, list) and len(data) > 0:
+                return data[0]
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error fetching profile for {symbol}: {e}")
+            return None
+    
+    def enrich_with_market_cap(self, stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Enrich stock data with market cap information.
+        
+        Args:
+            stocks: List of stock dictionaries
+            
+        Returns:
+            List of stocks with added market cap data
+        """
+        logger.info(f"Fetching market cap data for {len(stocks)} stocks")
+        
+        for i, stock in enumerate(stocks):
+            symbol = stock.get('symbol')
+            if not symbol:
+                continue
+                
+            # Add small delay to avoid rate limiting
+            if i > 0:
+                time.sleep(0.1)
+            
+            profile = self.get_company_profile(symbol)
+            if profile and 'mktCap' in profile:
+                stock['mktCap'] = profile['mktCap']
+                logger.debug(f"Added market cap for {symbol}: ${profile['mktCap']:,.0f}")
+            else:
+                stock['mktCap'] = None
+                logger.debug(f"No market cap data for {symbol}")
+        
+        return stocks
     
     def __enter__(self):
         """Context manager entry."""

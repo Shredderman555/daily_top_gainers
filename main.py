@@ -101,6 +101,11 @@ def main() -> None:
             logger.info(f"Total gainers: {len(all_gainers)}")
             logger.info(f"10%+ gainers: {len(sorted_gainers)}")
             
+            # Enrich with market cap data
+            if sorted_gainers:
+                logger.info("Fetching market cap data...")
+                sorted_gainers = api_client.enrich_with_market_cap(sorted_gainers)
+            
             # Log top gainers
             if sorted_gainers:
                 logger.info("Top 5 gainers:")
