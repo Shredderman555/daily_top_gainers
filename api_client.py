@@ -163,6 +163,41 @@ class FMPAPIClient:
         
         return stocks
     
+    def filter_by_market_cap(self, stocks: List[Dict[str, Any]], 
+                             min_market_cap: float = 300_000_000) -> List[Dict[str, Any]]:
+        """Filter stocks by minimum market cap.
+        
+        Args:
+            stocks: List of stock dictionaries with market cap data
+            min_market_cap: Minimum market cap in dollars (default: $300M)
+            
+        Returns:
+            Filtered list of stocks meeting the market cap criteria
+        """
+        filtered_stocks = []
+        excluded_count = 0
+        
+        for stock in stocks:
+            market_cap = stock.get('mktCap')
+            symbol = stock.get('symbol', 'Unknown')
+            
+            # Skip if no market cap data
+            if market_cap is None:
+                logger.debug(f"No market cap data for {symbol}, excluding")
+                excluded_count += 1
+                continue
+            
+            # Check if meets minimum market cap
+            if market_cap >= min_market_cap:
+                filtered_stocks.append(stock)
+            else:
+                logger.debug(f"Excluding {symbol} - Market cap ${market_cap:,.0f} < ${min_market_cap:,.0f}")
+                excluded_count += 1
+        
+        logger.info(f"Filtered {excluded_count} stocks with market cap < ${min_market_cap/1_000_000:.0f}M")
+        logger.info(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
+        return filtered_stocks
+    
     def __enter__(self):
         """Context manager entry."""
         return self

@@ -105,10 +105,17 @@ def main() -> None:
             if sorted_gainers:
                 logger.info("Fetching market cap data...")
                 sorted_gainers = api_client.enrich_with_market_cap(sorted_gainers)
+                
+                # Filter by market cap (minimum $300M)
+                logger.info("Applying market cap filter ($300M minimum)...")
+                sorted_gainers = api_client.filter_by_market_cap(sorted_gainers, min_market_cap=300_000_000)
+                
+                # Re-sort after filtering (in case order changed)
+                sorted_gainers = sort_by_gain_percentage(sorted_gainers)
             
             # Log top gainers
             if sorted_gainers:
-                logger.info("Top 5 gainers:")
+                logger.info("Top 5 gainers after all filters:")
                 for i, stock in enumerate(sorted_gainers[:5], 1):
                     symbol = stock.get('symbol', 'N/A')
                     change = stock.get('changesPercentage', 'N/A')
