@@ -128,6 +128,26 @@ def main() -> None:
                 sorted_gainers = sort_by_gain_percentage(sorted_gainers)
                 print(f" ({len(sorted_gainers)} qualify)")
             
+            # Enrich with company descriptions if Perplexity API is configured
+            if sorted_gainers and config.perplexity_api_key:
+                print("\nFetching company descriptions:")
+                
+                def progress_callback(company, success, error=None):
+                    if success:
+                        print(f"  → {company} ✓")
+                    else:
+                        print(f"  → {company} ✗ ({error})")
+                
+                sorted_gainers = api_client.enrich_with_descriptions(
+                    sorted_gainers,
+                    config.perplexity_api_key,
+                    progress_callback=progress_callback
+                )
+                
+                # Count successful descriptions
+                successful = sum(1 for stock in sorted_gainers if stock.get('description'))
+                print(f"✓ Descriptions complete ({successful}/{len(sorted_gainers)})")
+            
             # Log top gainers
             if sorted_gainers:
                 logger.info("Top 5 gainers after all filters:")
@@ -145,7 +165,7 @@ def main() -> None:
                     sender_password=config.email_password
                 )
                 
-                print("✓ Sending email...", end="", flush=True)
+                print("\n✓ Sending email...", end="", flush=True)
                 logger.info(f"Sending email to {config.email_recipient}...")
                 success = email_sender.send_email(
                     recipient=config.email_recipient,

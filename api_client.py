@@ -2,9 +2,10 @@
 
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
+from perplexity_client import PerplexityClient
 
 
 logger = logging.getLogger(__name__)
@@ -197,6 +198,45 @@ class FMPAPIClient:
         logger.debug(f"Filtered {excluded_count} stocks with market cap < ${min_market_cap/1_000_000:.0f}M")
         logger.debug(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
         return filtered_stocks
+    
+    def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
+                                 perplexity_api_key: str,
+                                 progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Enrich stock data with company descriptions from Perplexity.
+        
+        Args:
+            stocks: List of stock dictionaries
+            perplexity_api_key: Perplexity API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added description data
+        """
+        if not perplexity_api_key:
+            logger.warning("No Perplexity API key provided, skipping descriptions")
+            return stocks
+        
+        logger.info("Fetching company descriptions from Perplexity API")
+        
+        # Initialize Perplexity client
+        with PerplexityClient(perplexity_api_key) as client:
+            # Get company names
+            company_names = [stock.get('name', stock.get('symbol', 'Unknown')) for stock in stocks]
+            
+            # Fetch descriptions
+            descriptions, successful = client.get_descriptions_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=0.5
+            )
+            
+            # Add descriptions to stock data
+            for stock, company_name in zip(stocks, company_names):
+                stock['description'] = descriptions.get(company_name, None)
+            
+            logger.info(f"Successfully fetched descriptions for {successful}/{len(stocks)} companies")
+        
+        return stocks
     
     def __enter__(self):
         """Context manager entry."""

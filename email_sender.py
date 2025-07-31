@@ -80,6 +80,7 @@ class EmailSender:
             change_percent = stock.get('changesPercentage', 'N/A')
             price = stock.get('price', 0)
             market_cap = stock.get('mktCap')
+            description = stock.get('description', '')
             
             # Clean up percentage display
             if isinstance(change_percent, str):
@@ -94,10 +95,14 @@ class EmailSender:
             # Format market cap
             market_cap_display = self.format_market_cap(market_cap)
             
+            # Handle missing description
+            description_display = description if description else "Description unavailable"
+            
             table_rows.append(f"""
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{symbol}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{name}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-size: 12px; color: #666;">{description_display}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee; color: #0a0; font-weight: bold;">{change_display}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">${price:.2f}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{market_cap_display}</td>
@@ -114,6 +119,7 @@ class EmailSender:
                         <tr style="background-color: #f5f5f5;">
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Symbol</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Company Name</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">% Gain</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Current Price</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Market Cap</th>

@@ -44,6 +44,11 @@ class Config:
         """Get SMTP server port."""
         return int(os.getenv('SMTP_PORT', '587'))
     
+    @property
+    def perplexity_api_key(self) -> str:
+        """Get Perplexity API key."""
+        return os.getenv('PERPLEXITY_API_KEY', '')
+    
     def _validate_config(self) -> None:
         """Validate that all required configuration values are present."""
         required_vars = {
@@ -68,5 +73,6 @@ class Config:
             'smtp_server': self.smtp_server,
             'smtp_port': self.smtp_port,
             'api_configured': bool(self.fmp_api_key),
-            'email_configured': bool(self.email_password)
+            'email_configured': bool(self.email_password),
+            'perplexity_configured': bool(self.perplexity_api_key)
         }
