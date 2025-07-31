@@ -154,6 +154,7 @@ class FMPAPIClient:
             if i > 0:
                 time.sleep(0.1)
             
+            # Fetch company profile for market cap
             profile = self.get_company_profile(symbol)
             if profile and 'mktCap' in profile:
                 stock['mktCap'] = profile['mktCap']
@@ -202,7 +203,7 @@ class FMPAPIClient:
     def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
                                  perplexity_api_key: str,
                                  progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
-        """Enrich stock data with company descriptions and growth rates from Perplexity.
+        """Enrich stock data with company descriptions, growth rates, and P/S ratios from Perplexity.
         
         Args:
             stocks: List of stock dictionaries
@@ -210,7 +211,7 @@ class FMPAPIClient:
             progress_callback: Optional callback for progress updates
             
         Returns:
-            List of stocks with added description and growth rate data
+            List of stocks with added description, growth rate, and P/S ratio data
         """
         if not perplexity_api_key:
             logger.warning("No Perplexity API key provided, skipping descriptions")
@@ -237,13 +238,22 @@ class FMPAPIClient:
                 delay=0.5
             )
             
-            # Add descriptions and growth rates to stock data
+            # Fetch P/S ratios
+            ps_ratios, ps_successful = client.get_ps_ratios_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=0.5
+            )
+            
+            # Add descriptions, growth rates, and P/S ratios to stock data
             for stock, company_name in zip(stocks, company_names):
                 stock['description'] = descriptions.get(company_name, None)
                 stock['growth_rate'] = growth_rates.get(company_name, None)
+                stock['ps_ratio'] = ps_ratios.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
         
         return stocks
     

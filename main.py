@@ -128,7 +128,7 @@ def main() -> None:
                 sorted_gainers = sort_by_gain_percentage(sorted_gainers)
                 print(f" ({len(sorted_gainers)} qualify)")
             
-            # Enrich with company descriptions and growth rates if Perplexity API is configured
+            # Enrich with company descriptions, growth rates, and P/S ratios if Perplexity API is configured
             if sorted_gainers and config.perplexity_api_key:
                 print("\nFetching company data:")
                 
@@ -136,6 +136,8 @@ def main() -> None:
                     if success:
                         if data_type == "growth":
                             print(f"  → {company} growth rate ✓")
+                        elif data_type == "ps_ratio":
+                            print(f"  → {company} P/S ratio ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:
@@ -151,7 +153,8 @@ def main() -> None:
                 # Count successful fetches
                 desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
                 growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
-                print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)})")
+                ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
+                print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)})")
             
             # Log top gainers
             if sorted_gainers:

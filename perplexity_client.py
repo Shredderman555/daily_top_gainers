@@ -45,7 +45,7 @@ class PerplexityClient:
             response = self.session.post(
                 f"{self.BASE_URL}/chat/completions",
                 json={
-                    "model": "sonar",
+                    "model": "sonar-pro",
                     "messages": [
                         {
                             "role": "user",
@@ -64,6 +64,9 @@ class PerplexityClient:
             # Extract description from response
             if 'choices' in data and len(data['choices']) > 0:
                 description = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                description = re.sub(r'\[\d+\]|\[\d*$', '', description).strip()
                 # Ensure it's roughly 15 words
                 words = description.split()
                 if len(words) > 20:
@@ -101,7 +104,7 @@ class PerplexityClient:
         Returns:
             Growth rate percentage or None if error
         """
-        prompt = f"Give me a 15 word description on how {company_name} is expected to grow revenue over the next two to three years."
+        prompt = f"What percentage is {company_name} expected to increase revenue by this year, next year, and the year after that? Critical: Only return the years and the percentage increase in revenue, nothing else."
         
         try:
             logger.debug(f"Requesting growth rate for {company_name}")
@@ -109,7 +112,7 @@ class PerplexityClient:
             response = self.session.post(
                 f"{self.BASE_URL}/chat/completions",
                 json={
-                    "model": "sonar",
+                    "model": "sonar-pro",
                     "messages": [
                         {
                             "role": "user",
@@ -128,6 +131,9 @@ class PerplexityClient:
             # Extract growth rate from response
             if 'choices' in data and len(data['choices']) > 0:
                 growth_rate = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                growth_rate = re.sub(r'\[\d+\]|\[\d*$', '', growth_rate).strip()
                 logger.debug(f"Got growth rate for {company_name}: {growth_rate}")
                 return growth_rate
             else:
@@ -189,6 +195,78 @@ class PerplexityClient:
         logger.info(f"Successfully fetched descriptions for {successful}/{len(company_names)} companies")
         return results, successful
     
+    def get_ps_ratio(self, company_name: str) -> Optional[float]:
+        """Get price-to-sales ratio for the company.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            P/S ratio as float or None if error/unavailable
+        """
+        prompt = f"What is the price to sales ratio of {company_name}? Only return the value, nothing else"
+        
+        try:
+            logger.debug(f"Requesting P/S ratio for {company_name}")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 20
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract P/S ratio from response
+            if 'choices' in data and len(data['choices']) > 0:
+                ps_text = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                ps_text = re.sub(r'\[\d+\]|\[\d*$', '', ps_text).strip()
+                
+                # Try to extract numeric value
+                # Handle formats like "7.8", "7.8x", "7.8 times", etc.
+                ps_match = re.search(r'(\d+\.?\d*)', ps_text)
+                if ps_match:
+                    ps_value = float(ps_match.group(1))
+                    logger.debug(f"Got P/S ratio for {company_name}: {ps_value}")
+                    return ps_value
+                else:
+                    logger.warning(f"Could not parse P/S ratio from '{ps_text}' for {company_name}")
+                    return None
+            else:
+                logger.warning(f"No P/S ratio in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout getting P/S ratio for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error getting P/S ratio for {company_name}: {e}")
+            raise RequestException(str(e))
+    
     def get_growth_rates_batch(self, company_names: list, 
                                progress_callback: Optional[Callable] = None,
                                delay: float = 0.5) -> dict:
@@ -224,6 +302,44 @@ class PerplexityClient:
                 logger.warning(f"Failed to get growth rate for {company}: {error_msg}")
         
         logger.info(f"Successfully fetched growth rates for {successful}/{len(company_names)} companies")
+        return results, successful
+    
+    def get_ps_ratios_batch(self, company_names: list, 
+                            progress_callback: Optional[Callable] = None,
+                            delay: float = 0.5) -> dict:
+        """Get P/S ratios for multiple companies with rate limiting.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to P/S ratios
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                ps_ratio = self.get_ps_ratio(company)
+                results[company] = ps_ratio
+                if ps_ratio is not None:
+                    successful += 1
+                if progress_callback:
+                    progress_callback(company, ps_ratio is not None, "ps_ratio")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to get P/S ratio for {company}: {error_msg}")
+        
+        logger.info(f"Successfully fetched P/S ratios for {successful}/{len(company_names)} companies")
         return results, successful
     
     def __enter__(self):
