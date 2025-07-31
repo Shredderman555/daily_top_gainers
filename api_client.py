@@ -42,7 +42,7 @@ class FMPAPIClient:
         params = {'apikey': self.api_key}
         
         try:
-            logger.info("Fetching daily gainers from FMP API")
+            logger.debug("Fetching daily gainers from FMP API")
             response = self.session.get(url, params=params, timeout=30)
             response.raise_for_status()
             
@@ -53,7 +53,7 @@ class FMPAPIClient:
                 logger.error(f"API error: {error_msg}")
                 raise RequestException(f"API error: {error_msg}")
             
-            logger.info(f"Successfully fetched {len(data)} gainers")
+            logger.debug(f"Successfully fetched {len(data)} gainers")
             return data
             
         except Timeout:
@@ -105,7 +105,7 @@ class FMPAPIClient:
                 logger.warning(f"Error parsing gain percentage for {stock.get('symbol', 'Unknown')}: {e}")
                 continue
         
-        logger.info(f"Filtered {len(filtered_stocks)} stocks with gains >= {min_gain}%")
+        logger.debug(f"Filtered {len(filtered_stocks)} stocks with gains >= {min_gain}%")
         return filtered_stocks
     
     def get_company_profile(self, symbol: str) -> Optional[Dict[str, Any]]:
@@ -142,7 +142,7 @@ class FMPAPIClient:
         Returns:
             List of stocks with added market cap data
         """
-        logger.info(f"Fetching market cap data for {len(stocks)} stocks")
+        logger.debug(f"Fetching market cap data for {len(stocks)} stocks")
         
         for i, stock in enumerate(stocks):
             symbol = stock.get('symbol')
@@ -194,8 +194,8 @@ class FMPAPIClient:
                 logger.debug(f"Excluding {symbol} - Market cap ${market_cap:,.0f} < ${min_market_cap:,.0f}")
                 excluded_count += 1
         
-        logger.info(f"Filtered {excluded_count} stocks with market cap < ${min_market_cap/1_000_000:.0f}M")
-        logger.info(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
+        logger.debug(f"Filtered {excluded_count} stocks with market cap < ${min_market_cap/1_000_000:.0f}M")
+        logger.debug(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
         return filtered_stocks
     
     def __enter__(self):

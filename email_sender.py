@@ -178,13 +178,13 @@ class EmailSender:
                 return True
             
             # Send email
-            logger.info(f"Connecting to SMTP server {self.smtp_server}:{self.smtp_port}")
+            logger.debug(f"Connecting to SMTP server {self.smtp_server}:{self.smtp_port}")
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.sender_email, self.sender_password)
                 server.send_message(msg)
             
-            logger.info(f"Email sent successfully to {recipient}")
+            logger.debug(f"Email sent successfully to {recipient}")
             return True
             
         except smtplib.SMTPAuthenticationError:

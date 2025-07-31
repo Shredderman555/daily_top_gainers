@@ -22,15 +22,19 @@ def setup_logging(log_file: str = 'stock_alerts.log') -> None:
     """Set up logging configuration."""
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     
-    # Configure root logger
+    # Configure root logger with file handler only
     logging.basicConfig(
         level=logging.INFO,
         format=log_format,
         handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
+            logging.FileHandler(log_file)
         ]
     )
+    
+    # Add console handler only for errors
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.ERROR)
+    logging.getLogger().addHandler(console_handler)
 
 
 def sort_by_gain_percentage(stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -78,6 +82,13 @@ def main() -> None:
     setup_logging()
     logger = logging.getLogger(__name__)
     
+    # Clean progress display
+    if args.test:
+        print("Stock Alerts - Test Run")
+    else:
+        print("Stock Alerts")
+    print("━" * 24)
+    
     logger.info("=== Stock Alerts Started ===")
     logger.info(f"Run time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
@@ -89,8 +100,10 @@ def main() -> None:
         # Initialize API client
         with FMPAPIClient(config.fmp_api_key) as api_client:
             # Fetch daily gainers
+            print("✓ Fetching gainers...", end="", flush=True)
             logger.info("Fetching daily stock gainers...")
             all_gainers = api_client.get_daily_gainers()
+            print(f" ({len(all_gainers)} found)")
             
             # Filter for 10%+ gainers
             high_gainers = api_client.filter_by_gain_percentage(all_gainers, min_gain=10.0)
@@ -101,8 +114,9 @@ def main() -> None:
             logger.info(f"Total gainers: {len(all_gainers)}")
             logger.info(f"10%+ gainers: {len(sorted_gainers)}")
             
-            # Enrich with market cap data
+            # Enrich with market cap data and apply filters
             if sorted_gainers:
+                print("✓ Applying filters...", end="", flush=True)
                 logger.info("Fetching market cap data...")
                 sorted_gainers = api_client.enrich_with_market_cap(sorted_gainers)
                 
@@ -112,6 +126,7 @@ def main() -> None:
                 
                 # Re-sort after filtering (in case order changed)
                 sorted_gainers = sort_by_gain_percentage(sorted_gainers)
+                print(f" ({len(sorted_gainers)} qualify)")
             
             # Log top gainers
             if sorted_gainers:
@@ -130,6 +145,7 @@ def main() -> None:
                     sender_password=config.email_password
                 )
                 
+                print("✓ Sending email...", end="", flush=True)
                 logger.info(f"Sending email to {config.email_recipient}...")
                 success = email_sender.send_email(
                     recipient=config.email_recipient,
@@ -138,8 +154,11 @@ def main() -> None:
                 )
                 
                 if success:
+                    print(" Done!")
+                    print(f"\nEmail sent to: {config.email_recipient}")
                     logger.info("Email sent successfully!")
                 else:
+                    print(" Failed!")
                     logger.error("Failed to send email")
                     sys.exit(1)
             else:
@@ -148,6 +167,7 @@ def main() -> None:
         logger.info("=== Stock Alerts Completed Successfully ===")
         
     except Exception as e:
+        print(f"\n✗ Error: {e}")
         logger.error(f"Error: {e}")
         sys.exit(1)
 
