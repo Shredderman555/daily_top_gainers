@@ -117,16 +117,26 @@ def main() -> None:
             # Enrich with market cap data and apply filters
             if sorted_gainers:
                 print("✓ Applying filters...", end="", flush=True)
-                logger.info("Fetching market cap data...")
+                logger.info("Fetching company profile data...")
                 sorted_gainers = api_client.enrich_with_market_cap(sorted_gainers)
+                
+                initial_count = len(sorted_gainers)
                 
                 # Filter by market cap (minimum $300M)
                 logger.info("Applying market cap filter ($300M minimum)...")
                 sorted_gainers = api_client.filter_by_market_cap(sorted_gainers, min_market_cap=300_000_000)
+                after_market_cap = len(sorted_gainers)
+                
+                # Filter by industry (exclude biotechnology/pharmaceutical)
+                logger.info("Applying industry filter (excluding biotechnology)...")
+                sorted_gainers = api_client.filter_by_industry(sorted_gainers, exclude_biotech=True)
+                after_industry = len(sorted_gainers)
                 
                 # Re-sort after filtering (in case order changed)
                 sorted_gainers = sort_by_gain_percentage(sorted_gainers)
-                print(f" ({len(sorted_gainers)} qualify)")
+                
+                # Show filter results
+                print(f" ({initial_count} → {after_market_cap} → {after_industry} qualify)")
             
             # Enrich with company descriptions, growth rates, and P/S ratios if Perplexity API is configured
             if sorted_gainers and config.perplexity_api_key:

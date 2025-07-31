@@ -135,15 +135,15 @@ class FMPAPIClient:
             return None
     
     def enrich_with_market_cap(self, stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Enrich stock data with market cap information.
+        """Enrich stock data with market cap, industry, and sector information.
         
         Args:
             stocks: List of stock dictionaries
             
         Returns:
-            List of stocks with added market cap data
+            List of stocks with added market cap, industry, and sector data
         """
-        logger.debug(f"Fetching market cap data for {len(stocks)} stocks")
+        logger.debug(f"Fetching company profile data for {len(stocks)} stocks")
         
         for i, stock in enumerate(stocks):
             symbol = stock.get('symbol')
@@ -154,14 +154,26 @@ class FMPAPIClient:
             if i > 0:
                 time.sleep(0.1)
             
-            # Fetch company profile for market cap
+            # Fetch company profile for market cap, industry, and sector
             profile = self.get_company_profile(symbol)
-            if profile and 'mktCap' in profile:
-                stock['mktCap'] = profile['mktCap']
-                logger.debug(f"Added market cap for {symbol}: ${profile['mktCap']:,.0f}")
+            if profile:
+                # Add market cap
+                if 'mktCap' in profile:
+                    stock['mktCap'] = profile['mktCap']
+                    logger.debug(f"Added market cap for {symbol}: ${profile['mktCap']:,.0f}")
+                else:
+                    stock['mktCap'] = None
+                    logger.debug(f"No market cap data for {symbol}")
+                
+                # Add industry and sector
+                stock['industry'] = profile.get('industry', '')
+                stock['sector'] = profile.get('sector', '')
+                logger.debug(f"Added industry/sector for {symbol}: {stock['sector']} / {stock['industry']}")
             else:
                 stock['mktCap'] = None
-                logger.debug(f"No market cap data for {symbol}")
+                stock['industry'] = ''
+                stock['sector'] = ''
+                logger.debug(f"No profile data for {symbol}")
         
         return stocks
     
@@ -198,6 +210,41 @@ class FMPAPIClient:
         
         logger.debug(f"Filtered {excluded_count} stocks with market cap < ${min_market_cap/1_000_000:.0f}M")
         logger.debug(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
+        return filtered_stocks
+    
+    def filter_by_industry(self, stocks: List[Dict[str, Any]], 
+                           exclude_biotech: bool = True) -> List[Dict[str, Any]]:
+        """Filter stocks by industry, optionally excluding biotechnology.
+        
+        Args:
+            stocks: List of stock dictionaries with industry data
+            exclude_biotech: Whether to exclude biotechnology/pharmaceutical stocks (default: True)
+            
+        Returns:
+            Filtered list of stocks
+        """
+        if not exclude_biotech:
+            return stocks
+            
+        filtered_stocks = []
+        excluded_count = 0
+        excluded_industries = ['biotechnology', 'pharmaceutical']
+        
+        for stock in stocks:
+            symbol = stock.get('symbol', 'Unknown')
+            industry = stock.get('industry', '').lower()
+            
+            # Check if stock is in excluded industries
+            is_excluded = any(term in industry for term in excluded_industries)
+            
+            if is_excluded:
+                logger.debug(f"Excluding {symbol} - Industry: {stock.get('industry', 'N/A')}")
+                excluded_count += 1
+            else:
+                filtered_stocks.append(stock)
+        
+        logger.debug(f"Filtered {excluded_count} biotechnology/pharmaceutical stocks")
+        logger.debug(f"Remaining stocks after industry filter: {len(filtered_stocks)}")
         return filtered_stocks
     
     def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
