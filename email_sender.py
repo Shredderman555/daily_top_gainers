@@ -79,7 +79,6 @@ class EmailSender:
             name = stock.get('name', 'N/A')
             change_percent = stock.get('changesPercentage', 'N/A')
             price = stock.get('price', 0)
-            previous_close = stock.get('previousClose', 0)
             market_cap = stock.get('mktCap')
             
             # Clean up percentage display
@@ -101,7 +100,6 @@ class EmailSender:
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{name}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee; color: #0a0; font-weight: bold;">{change_display}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">${price:.2f}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${previous_close:.2f}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{market_cap_display}</td>
                 </tr>
             """)
@@ -118,7 +116,6 @@ class EmailSender:
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Company Name</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">% Gain</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Current Price</th>
-                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Previous Close</th>
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Market Cap</th>
                         </tr>
                     </thead>
