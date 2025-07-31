@@ -202,7 +202,7 @@ class FMPAPIClient:
     def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
                                  perplexity_api_key: str,
                                  progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
-        """Enrich stock data with company descriptions from Perplexity.
+        """Enrich stock data with company descriptions and growth rates from Perplexity.
         
         Args:
             stocks: List of stock dictionaries
@@ -210,13 +210,13 @@ class FMPAPIClient:
             progress_callback: Optional callback for progress updates
             
         Returns:
-            List of stocks with added description data
+            List of stocks with added description and growth rate data
         """
         if not perplexity_api_key:
             logger.warning("No Perplexity API key provided, skipping descriptions")
             return stocks
         
-        logger.info("Fetching company descriptions from Perplexity API")
+        logger.info("Fetching company data from Perplexity API")
         
         # Initialize Perplexity client
         with PerplexityClient(perplexity_api_key) as client:
@@ -224,17 +224,26 @@ class FMPAPIClient:
             company_names = [stock.get('name', stock.get('symbol', 'Unknown')) for stock in stocks]
             
             # Fetch descriptions
-            descriptions, successful = client.get_descriptions_batch(
+            descriptions, desc_successful = client.get_descriptions_batch(
                 company_names, 
                 progress_callback=progress_callback,
                 delay=0.5
             )
             
-            # Add descriptions to stock data
+            # Fetch growth rates
+            growth_rates, growth_successful = client.get_growth_rates_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=0.5
+            )
+            
+            # Add descriptions and growth rates to stock data
             for stock, company_name in zip(stocks, company_names):
                 stock['description'] = descriptions.get(company_name, None)
+                stock['growth_rate'] = growth_rates.get(company_name, None)
             
-            logger.info(f"Successfully fetched descriptions for {successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
         
         return stocks
     

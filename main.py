@@ -128,15 +128,19 @@ def main() -> None:
                 sorted_gainers = sort_by_gain_percentage(sorted_gainers)
                 print(f" ({len(sorted_gainers)} qualify)")
             
-            # Enrich with company descriptions if Perplexity API is configured
+            # Enrich with company descriptions and growth rates if Perplexity API is configured
             if sorted_gainers and config.perplexity_api_key:
-                print("\nFetching company descriptions:")
+                print("\nFetching company data:")
                 
-                def progress_callback(company, success, error=None):
+                def progress_callback(company, success, data_type=None):
                     if success:
-                        print(f"  → {company} ✓")
+                        if data_type == "growth":
+                            print(f"  → {company} growth rate ✓")
+                        else:
+                            print(f"  → {company} description ✓")
                     else:
-                        print(f"  → {company} ✗ ({error})")
+                        # data_type contains error message when success is False
+                        print(f"  → {company} ✗ ({data_type})")
                 
                 sorted_gainers = api_client.enrich_with_descriptions(
                     sorted_gainers,
@@ -144,9 +148,10 @@ def main() -> None:
                     progress_callback=progress_callback
                 )
                 
-                # Count successful descriptions
-                successful = sum(1 for stock in sorted_gainers if stock.get('description'))
-                print(f"✓ Descriptions complete ({successful}/{len(sorted_gainers)})")
+                # Count successful fetches
+                desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
+                growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
+                print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)})")
             
             # Log top gainers
             if sorted_gainers:
