@@ -275,21 +275,21 @@ class FMPAPIClient:
             descriptions, desc_successful = client.get_descriptions_batch(
                 company_names, 
                 progress_callback=progress_callback,
-                delay=0.5
+                delay=1.5
             )
             
             # Fetch growth rates
             growth_rates, growth_successful = client.get_growth_rates_batch(
                 company_names, 
                 progress_callback=progress_callback,
-                delay=0.5
+                delay=1.5
             )
             
             # Fetch P/S ratios
             ps_ratios, ps_successful = client.get_ps_ratios_batch(
                 company_names, 
                 progress_callback=progress_callback,
-                delay=0.5
+                delay=1.5
             )
             
             # Add descriptions, growth rates, and P/S ratios to stock data

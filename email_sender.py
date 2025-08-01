@@ -62,12 +62,11 @@ class EmailSender:
         if not stocks:
             return """
             <html>
-                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
-                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-                        <h2 style="color: #333; text-align: center;">📈 Stock Alert: No 10%+ Gainers Today</h2>
-                        <p style="color: #666; text-align: center;">No stocks gained 10% or more today.</p>
-                        <hr style="border: 1px solid #eee; margin: 30px 0;">
-                        <p style="color: #999; font-size: 12px; text-align: center;">
+                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff;">
+                    <div style="max-width: 700px; margin: 0 auto; padding: 40px 20px;">
+                        <h1 style="color: #000; text-align: center; font-weight: 600;">Stock Alert: No 10%+ Gainers Today</h1>
+                        <p style="color: #666; text-align: center; font-size: 16px; margin-top: 20px;">No stocks gained 10% or more today.</p>
+                        <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px;">
                             Generated on {date}
                         </p>
                     </div>
@@ -80,7 +79,6 @@ class EmailSender:
             symbol = stock.get('symbol', 'N/A')
             name = stock.get('name', 'N/A')
             change_percent = stock.get('changesPercentage', 'N/A')
-            price = stock.get('price', 0)
             market_cap = stock.get('mktCap')
             ps_ratio = stock.get('ps_ratio')
             description = stock.get('description', '')
@@ -92,7 +90,7 @@ class EmailSender:
             
             try:
                 change_float = float(change_percent)
-                change_display = f"+{change_float:.2f}%"
+                change_display = f"{change_float:.0f}%"
             except:
                 change_display = change_percent
             
@@ -102,7 +100,7 @@ class EmailSender:
             # Format P/S ratio
             if ps_ratio is not None:
                 try:
-                    ps_ratio_display = f"{ps_ratio:.1f}x"
+                    ps_ratio_display = f"{ps_ratio:.0f}x"
                 except (ValueError, TypeError):
                     ps_ratio_display = "N/A"
             else:
@@ -111,50 +109,59 @@ class EmailSender:
             # Handle missing description
             description_display = description if description else "Description unavailable"
             
-            # Handle missing growth rate
-            growth_rate_display = growth_rate if growth_rate else "Growth data unavailable"
+            # Parse growth rates by year
+            growth_table_rows = []
+            if growth_rate:
+                # Try to parse format like "2025: 20%, 2026: 21%, 2027: 22%"
+                import re
+                year_pattern = r'(\d{4}):\s*([\d.]+)%'
+                matches = re.findall(year_pattern, growth_rate)
+                if matches:
+                    for year, rate in matches:
+                        growth_table_rows.append(f'<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr {year}:</td><td style="padding: 4px 0; color: #333;">{rate}%</td></tr>')
+                else:
+                    # Fallback for old format
+                    growth_table_rows.append(f'<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev growth:</td><td style="padding: 4px 0; color: #333;">{growth_rate}</td></tr>')
+            else:
+                growth_table_rows = [
+                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2025:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>',
+                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2026:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>',
+                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2027:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>'
+                ]
             
-            # Alternate background colors
-            bg_color = "#ffffff" if i % 2 == 0 else "#f8f9fa"
-            growth_bg = "#f8f9fa" if i % 2 == 0 else "#ffffff"
+            # Create growth rate table HTML
+            growth_html = f'<table style="border-collapse: collapse; margin: 0;">{"".join(growth_table_rows)}</table>'
             
             stock_cards.append(f"""
-                <div style="background-color: {bg_color}; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <!-- Header with symbol and gain -->
-                    <div style="display: table; width: 100%; margin-bottom: 15px;">
-                        <div style="display: table-cell; vertical-align: middle;">
-                            <span style="font-size: 24px; font-weight: bold; color: #1a1a1a;">{symbol}</span>
-                        </div>
-                        <div style="display: table-cell; vertical-align: middle; text-align: right;">
-                            <span style="font-size: 20px; font-weight: bold; color: #00aa00;">{change_display}</span>
-                        </div>
+                <div style="background-color: #f5f5f5; border-radius: 16px; padding: 24px; margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+                    <!-- Header with company name and symbol -->
+                    <div style="margin-bottom: 16px;">
+                        <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #000;">
+                            {name} &nbsp;&nbsp;<span style="font-weight: 700;">{symbol}</span>
+                        </h2>
                     </div>
                     
-                    <!-- Company name -->
-                    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #333; font-weight: 600;">{name}</h3>
-                    
                     <!-- Description -->
-                    <p style="margin: 0 0 15px 0; color: #666; font-size: 14px; line-height: 1.5;">
+                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {description_display}
                     </p>
                     
-                    <!-- Growth rate box -->
-                    <div style="background-color: {growth_bg}; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                        <p style="margin: 0; color: #444; font-size: 14px;">
-                            📊 <strong>Expected Growth:</strong> {growth_rate_display}
-                        </p>
-                    </div>
-                    
-                    <!-- Footer with price, P/S ratio, and market cap -->
-                    <div style="display: table; width: 100%; padding-top: 15px; border-top: 1px solid #eee;">
-                        <div style="display: table-cell; vertical-align: middle;">
-                            <span style="font-size: 16px; color: #333;">💵 ${price:.2f}</span>
+                    <!-- Two column layout -->
+                    <div style="display: table; width: 100%;">
+                        <!-- Left column: Growth rates -->
+                        <div style="display: table-cell; vertical-align: top; padding-right: 40px;">
+                            <div style="color: #333; font-size: 16px; line-height: 1.8;">
+                                {growth_html}
+                            </div>
                         </div>
-                        <div style="display: table-cell; vertical-align: middle; text-align: center;">
-                            <span style="font-size: 16px; color: #555;">📊 P/S: {ps_ratio_display}</span>
-                        </div>
-                        <div style="display: table-cell; vertical-align: middle; text-align: right;">
-                            <span style="font-size: 16px; color: #666;">🏢 Market Cap: {market_cap_display}</span>
+                        
+                        <!-- Right column: PS ratio, Market cap, Today's gain -->
+                        <div style="display: table-cell; vertical-align: top; text-align: left;">
+                            <div style="color: #333; font-size: 16px; line-height: 1.8;">
+                                PS ratio: {ps_ratio_display}<br>
+                                Mkt cap: {market_cap_display}<br>
+                                Today's gain: {change_display}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -162,15 +169,14 @@ class EmailSender:
         
         html = f"""
         <html>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-                    <h2 style="color: #333; text-align: center; margin-bottom: 30px;">📈 Stock Alert: {len(stocks)} Stocks Gained 10%+ Today</h2>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff;">
+                <div style="max-width: 700px; margin: 0 auto; padding: 40px 20px;">
+                    <h1 style="color: #000; text-align: center; margin-bottom: 40px; font-weight: 600;">Stock Alert: {len(stocks)} Stocks Gained 10%+ Today</h1>
                     
                     <!-- Stock cards -->
                     {''.join(stock_cards)}
                     
-                    <hr style="border: 1px solid #eee; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px; text-align: center;">
+                    <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px;">
                         Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
                     </p>
                 </div>
@@ -200,9 +206,9 @@ class EmailSender:
             
             # Set subject based on number of gainers
             if stocks:
-                msg['Subject'] = f"📈 Stock Alert: {len(stocks)} stocks gained 10%+ today"
+                msg['Subject'] = f"Stock Alert: {len(stocks)} stocks gained 10%+ today"
             else:
-                msg['Subject'] = "📈 Stock Alert: No 10%+ gainers today"
+                msg['Subject'] = "Stock Alert: No 10%+ gainers today"
             
             # Create HTML content
             html_content = self.create_email_html(stocks)

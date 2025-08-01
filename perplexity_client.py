@@ -104,7 +104,7 @@ class PerplexityClient:
         Returns:
             Growth rate percentage or None if error
         """
-        prompt = f"What percentage is {company_name} expected to increase revenue by this year, next year, and the year after that? Critical: Only return the years and the percentage increase in revenue, nothing else."
+        prompt = f"What is {company_name}'s expected revenue growth rate for 2025, 2026, and 2027? Return ONLY in this exact format: '2025: X%, 2026: Y%, 2027: Z%' where X, Y, Z are the growth percentages. No other text."
         
         try:
             logger.debug(f"Requesting growth rate for {company_name}")
@@ -181,9 +181,13 @@ class PerplexityClient:
             try:
                 description = self.get_company_description(company)
                 results[company] = description
-                successful += 1
-                if progress_callback:
-                    progress_callback(company, True)
+                if description is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True)
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
                     
             except RequestException as e:
                 results[company] = None
@@ -290,9 +294,13 @@ class PerplexityClient:
             try:
                 growth_rate = self.get_company_growth_rate(company)
                 results[company] = growth_rate
-                successful += 1
-                if progress_callback:
-                    progress_callback(company, True, "growth")
+                if growth_rate is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "growth")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
                     
             except RequestException as e:
                 results[company] = None
