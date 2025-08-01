@@ -29,8 +29,16 @@ def main():
     config = Config()
     
     if config.perplexity_api_key:
-        print(f"Fetching Perplexity data for {test_stock[0]['name']}...")
         with FMPAPIClient(config.fmp_api_key) as api:
+            # Fetch real company profile to get accurate name
+            print(f"Fetching company profile for {args.symbol.upper()}...")
+            profile = api.get_company_profile(args.symbol.upper())
+            if profile and 'companyName' in profile:
+                # Use real company name from FMP
+                test_stock[0]['name'] = profile['companyName']
+                print(f"Using company name: {test_stock[0]['name']}")
+            
+            print(f"Fetching Perplexity data...")
             test_stock = api.enrich_with_descriptions(test_stock, config.perplexity_api_key)
     
     # Send email

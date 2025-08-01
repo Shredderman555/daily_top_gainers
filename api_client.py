@@ -268,8 +268,16 @@ class FMPAPIClient:
         
         # Initialize Perplexity client
         with PerplexityClient(perplexity_api_key) as client:
-            # Get company names
-            company_names = [stock.get('name', stock.get('symbol', 'Unknown')) for stock in stocks]
+            # Get company names with ticker symbols for better accuracy
+            company_names = []
+            for stock in stocks:
+                name = stock.get('name', stock.get('symbol', 'Unknown'))
+                symbol = stock.get('symbol', '')
+                # Format as "Company Name (SYMBOL)" if we have both
+                if name and symbol and name != symbol:
+                    company_names.append(f"{name} ({symbol})")
+                else:
+                    company_names.append(name)
             
             # Fetch descriptions
             descriptions, desc_successful = client.get_descriptions_batch(

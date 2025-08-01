@@ -35,9 +35,9 @@ class PerplexityClient:
             company_name: Name of the company
             
         Returns:
-            15-word description or None if error
+            30-word description or None if error
         """
-        prompt = f"Give me a 15-word description of what {company_name} does. Only return that fifteen-word description, nothing else."
+        prompt = f"Give me a 30-word description of what {company_name} does and a description of it's competitive advantage. Only return that thirty-word description, nothing else."
         
         try:
             logger.debug(f"Requesting description for {company_name}")
@@ -53,7 +53,7 @@ class PerplexityClient:
                         }
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 30
+                    "max_tokens": 60
                 },
                 timeout=10
             )
@@ -67,10 +67,10 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 description = re.sub(r'\[\d+\]|\[\d*$', '', description).strip()
-                # Ensure it's roughly 15 words
+                # Ensure it's roughly 30 words
                 words = description.split()
-                if len(words) > 20:
-                    description = ' '.join(words[:15]) + '...'
+                if len(words) > 35:
+                    description = ' '.join(words[:30]) + '...'
                 logger.debug(f"Got description for {company_name}: {len(words)} words")
                 return description
             else:
@@ -208,7 +208,7 @@ class PerplexityClient:
         Returns:
             P/S ratio as float or None if error/unavailable
         """
-        prompt = f"What is the price to sales ratio of {company_name}? Only return the value, nothing else"
+        prompt = f"What is the price to sales ratio of {company_name}? Critical: Your response format should be the value, no other words"
         
         try:
             logger.debug(f"Requesting P/S ratio for {company_name}")

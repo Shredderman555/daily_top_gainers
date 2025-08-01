@@ -114,19 +114,19 @@ class EmailSender:
             if growth_rate:
                 # Try to parse format like "2025: 20%, 2026: 21%, 2027: 22%"
                 import re
-                year_pattern = r'(\d{4}):\s*([\d.]+)%'
+                year_pattern = r'(\d{4}):\s*([\d.]+(?:-[\d.]+)?)%'
                 matches = re.findall(year_pattern, growth_rate)
                 if matches:
                     for year, rate in matches:
-                        growth_table_rows.append(f'<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr {year}:</td><td style="padding: 4px 0; color: #333;">{rate}%</td></tr>')
+                        growth_table_rows.append(f'<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr {year[-2:]}:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{rate}%</td></tr>')
                 else:
                     # Fallback for old format
-                    growth_table_rows.append(f'<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev growth:</td><td style="padding: 4px 0; color: #333;">{growth_rate}</td></tr>')
+                    growth_table_rows.append(f'<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev growth:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{growth_rate}</td></tr>')
             else:
                 growth_table_rows = [
-                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2025:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>',
-                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2026:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>',
-                    '<tr><td style="padding: 4px 16px 4px 0; color: #333;">Rev gr 2027:</td><td style="padding: 4px 0; color: #333;">N/A</td></tr>'
+                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 25:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>',
+                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 26:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>',
+                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 27:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>'
                 ]
             
             # Create growth rate table HTML
@@ -157,11 +157,11 @@ class EmailSender:
                         
                         <!-- Right column: PS ratio, Market cap, Today's gain -->
                         <div style="display: table-cell; vertical-align: top; text-align: left;">
-                            <div style="color: #333; font-size: 16px; line-height: 1.8;">
-                                PS ratio: {ps_ratio_display}<br>
-                                Mkt cap: {market_cap_display}<br>
-                                Today's gain: {change_display}
-                            </div>
+                            <table style="border-collapse: collapse; margin: 0;">
+                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">PS ratio:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{ps_ratio_display}</td></tr>
+                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Mkt cap:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{market_cap_display}</td></tr>
+                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Today's gain:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{change_display}</td></tr>
+                            </table>
                         </div>
                     </div>
                 </div>
