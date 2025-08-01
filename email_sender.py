@@ -132,6 +132,16 @@ class EmailSender:
             # Create growth rate table HTML
             growth_html = f'<table style="border-collapse: collapse; margin: 0;">{"".join(growth_table_rows)}</table>'
             
+            # Get competitive and growth analysis data
+            competitive_score = stock.get('competitive_score', None)
+            competitive_reasoning = stock.get('competitive_reasoning', '')
+            market_growth_score = stock.get('market_growth_score', None)
+            market_growth_reasoning = stock.get('market_growth_reasoning', '')
+            
+            # Format scores
+            competitive_display = f"{competitive_score}/10" if competitive_score is not None else "N/A"
+            growth_score_display = f"{market_growth_score}/10" if market_growth_score is not None else "N/A"
+            
             stock_cards.append(f"""
                 <div style="background-color: #f5f5f5; border-radius: 16px; padding: 24px; margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
                     <!-- Header with company name and symbol -->
@@ -147,7 +157,7 @@ class EmailSender:
                     </p>
                     
                     <!-- Two column layout -->
-                    <div style="display: table; width: 100%;">
+                    <div style="display: table; width: 100%; margin-bottom: 20px;">
                         <!-- Left column: Growth rates -->
                         <div style="display: table-cell; vertical-align: top; padding-right: 40px;">
                             <div style="color: #333; font-size: 16px; line-height: 1.8;">
@@ -164,6 +174,22 @@ class EmailSender:
                             </table>
                         </div>
                     </div>
+                    
+                    <!-- Competitive Advantage -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Competitive Advantage: {competitive_display}
+                    </p>
+                    <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {competitive_reasoning if competitive_reasoning else "Analysis not available"}
+                    </p>
+                    
+                    <!-- Market Growth -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Market Growth: {growth_score_display}
+                    </p>
+                    <p style="margin: 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {market_growth_reasoning if market_growth_reasoning else "Analysis not available"}
+                    </p>
                 </div>
             """)
         

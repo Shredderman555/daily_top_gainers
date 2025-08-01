@@ -3,6 +3,7 @@
 import logging
 import time
 from typing import List, Dict, Any, Optional, Callable
+import re
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
 from perplexity_client import PerplexityClient
@@ -17,6 +18,94 @@ class FMPAPIClient:
     BASE_URL = "https://financialmodelingprep.com/api/v3"
     GAINERS_ENDPOINT = "/stock_market/gainers"
     PROFILE_ENDPOINT = "/profile"
+    
+    def _parse_company_analysis(self, full_response: str) -> Dict[str, Any]:
+        """Parse the structured company analysis response.
+        
+        Args:
+            full_response: Full response from Perplexity containing description,
+                          competitive advantage, and market growth analysis
+                          
+        Returns:
+            Dictionary with parsed components
+        """
+        result = {
+            'short_description': None,
+            'competitive_score': None,
+            'competitive_reasoning': None,
+            'growth_score': None,
+            'growth_reasoning': None
+        }
+        
+        if not full_response:
+            return result
+        
+        # Try to parse sections
+        lines = full_response.strip().split('\n')
+        current_section = None
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for section markers or scores
+            if 'One,' in line or line.startswith('1.') or (current_section is None and len(lines) > 0):
+                # This is likely the description
+                result['short_description'] = line.replace('One,', '').replace('1.', '').strip()
+                current_section = 'description'
+            elif 'Two,' in line or line.startswith('2.') or 'competitive advantage' in line.lower():
+                current_section = 'competitive'
+                # Try to extract score
+                score_match = re.search(r'(\d+)\s*(?:out of\s*10|/\s*10)', line)
+                if score_match:
+                    result['competitive_score'] = int(score_match.group(1))
+                # Rest is reasoning
+                reasoning = re.sub(r'Two,|2\.|Score:\s*\d+/10|\d+\s*out of\s*10', '', line).strip()
+                if reasoning:
+                    result['competitive_reasoning'] = reasoning
+            elif 'Three,' in line or line.startswith('3.') or 'market' in line.lower() and 'grow' in line.lower():
+                current_section = 'growth'
+                # Try to extract score
+                score_match = re.search(r'(\d+)\s*(?:out of\s*10|/\s*10)', line)
+                if score_match:
+                    result['growth_score'] = int(score_match.group(1))
+                # Rest is reasoning
+                reasoning = re.sub(r'Three,|3\.|Score:\s*\d+/10|\d+\s*out of\s*10', '', line).strip()
+                if reasoning:
+                    result['growth_reasoning'] = reasoning
+            else:
+                # Continuation of previous section
+                if current_section == 'competitive' and not result['competitive_reasoning']:
+                    result['competitive_reasoning'] = line
+                elif current_section == 'growth' and not result['growth_reasoning']:
+                    result['growth_reasoning'] = line
+        
+        # If we couldn't parse it structured, just use first 20 words as description
+        if not result['short_description'] and full_response:
+            words = full_response.split()[:20]
+            result['short_description'] = ' '.join(words)
+        
+        # Clean up reasoning to remove duplicate score text
+        if result['competitive_reasoning']:
+            # Remove patterns like "Competitive advantage score: 4/10." from the beginning
+            result['competitive_reasoning'] = re.sub(
+                r'^(Competitive\s+advantage\s+score:|Score:)\s*\d+/10\.?\s*', 
+                '', 
+                result['competitive_reasoning'], 
+                flags=re.IGNORECASE
+            ).strip()
+        
+        if result['growth_reasoning']:
+            # Remove patterns like "Market growth score: 9/10." from the beginning
+            result['growth_reasoning'] = re.sub(
+                r'^(Market\s+growth\s+score:|Growth\s+score:|Score:)\s*\d+/10\.?\s*', 
+                '', 
+                result['growth_reasoning'], 
+                flags=re.IGNORECASE
+            ).strip()
+        
+        return result
     
     def __init__(self, api_key: str):
         """Initialize the API client with an API key.
@@ -212,6 +301,33 @@ class FMPAPIClient:
         logger.debug(f"Remaining stocks after market cap filter: {len(filtered_stocks)}")
         return filtered_stocks
     
+    def filter_by_technical_nature(self, stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter stocks to keep only technical/engineering-heavy companies.
+        
+        Args:
+            stocks: List of stock dictionaries with is_technical data
+            
+        Returns:
+            Filtered list of technical stocks
+        """
+        filtered_stocks = []
+        excluded_count = 0
+        
+        for stock in stocks:
+            symbol = stock.get('symbol', 'Unknown')
+            is_technical = stock.get('is_technical', None)
+            
+            # Keep if technical or if we couldn't determine (give benefit of doubt)
+            if is_technical is not False:
+                filtered_stocks.append(stock)
+            else:
+                logger.debug(f"Excluding {symbol} - Not technical/engineering-heavy")
+                excluded_count += 1
+        
+        logger.debug(f"Filtered {excluded_count} non-technical stocks")
+        logger.debug(f"Remaining stocks after technical filter: {len(filtered_stocks)}")
+        return filtered_stocks
+    
     def filter_by_industry(self, stocks: List[Dict[str, Any]], 
                            exclude_biotech: bool = True) -> List[Dict[str, Any]]:
         """Filter stocks by industry, optionally excluding biotechnology.
@@ -246,6 +362,53 @@ class FMPAPIClient:
         logger.debug(f"Filtered {excluded_count} biotechnology/pharmaceutical stocks")
         logger.debug(f"Remaining stocks after industry filter: {len(filtered_stocks)}")
         return filtered_stocks
+    
+    def check_technical_nature(self, stocks: List[Dict[str, Any]], 
+                               perplexity_api_key: str,
+                               progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Check if companies are technical/engineering-heavy.
+        
+        Args:
+            stocks: List of stock dictionaries
+            perplexity_api_key: Perplexity API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added is_technical data
+        """
+        if not perplexity_api_key:
+            logger.warning("No Perplexity API key provided, skipping technical checks")
+            return stocks
+        
+        logger.info("Checking technical nature of companies")
+        
+        # Initialize Perplexity client
+        with PerplexityClient(perplexity_api_key) as client:
+            # Get company names with ticker symbols for better accuracy
+            company_names = []
+            for stock in stocks:
+                name = stock.get('name', stock.get('symbol', 'Unknown'))
+                symbol = stock.get('symbol', '')
+                # Format as "Company Name (SYMBOL)" if we have both
+                if name and symbol and name != symbol:
+                    company_names.append(f"{name} ({symbol})")
+                else:
+                    company_names.append(name)
+            
+            # Check technical nature
+            technical_checks, tech_successful = client.get_technical_companies_batch(
+                company_names,
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add technical nature to stock data
+            for stock, company_name in zip(stocks, company_names):
+                stock['is_technical'] = technical_checks.get(company_name, None)
+            
+            logger.info(f"Successfully checked technical nature for {tech_successful}/{len(stocks)} companies")
+        
+        return stocks
     
     def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
                                  perplexity_api_key: str,
@@ -302,7 +465,22 @@ class FMPAPIClient:
             
             # Add descriptions, growth rates, and P/S ratios to stock data
             for stock, company_name in zip(stocks, company_names):
-                stock['description'] = descriptions.get(company_name, None)
+                # Parse the structured description response
+                full_description = descriptions.get(company_name, None)
+                if full_description:
+                    parsed = self._parse_company_analysis(full_description)
+                    stock['description'] = parsed['short_description']
+                    stock['competitive_score'] = parsed['competitive_score']
+                    stock['competitive_reasoning'] = parsed['competitive_reasoning']
+                    stock['market_growth_score'] = parsed['growth_score']
+                    stock['market_growth_reasoning'] = parsed['growth_reasoning']
+                else:
+                    stock['description'] = None
+                    stock['competitive_score'] = None
+                    stock['competitive_reasoning'] = None
+                    stock['market_growth_score'] = None
+                    stock['market_growth_reasoning'] = None
+                
                 stock['growth_rate'] = growth_rates.get(company_name, None)
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
             

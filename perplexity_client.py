@@ -29,15 +29,16 @@ class PerplexityClient:
         })
     
     def get_company_description(self, company_name: str) -> Optional[str]:
-        """Get a 15-word description of what the company does.
+        """Get company description with competitive advantage and market growth analysis.
         
         Args:
             company_name: Name of the company
             
         Returns:
-            30-word description or None if error
+            Structured response with description, competitive advantage score/reasoning,
+            and market growth score/reasoning, or None if error
         """
-        prompt = f"Give me a 30-word description of what {company_name} does and a description of it's competitive advantage. Only return that thirty-word description, nothing else."
+        prompt = f"Do three things. One, Give me a description of what {company_name} does in 20 words or less. Two, give a score out of 10 as to how strong this companies competitive advantage is based on how effectively it's competitors can compete with this company and explain your reasoning in 50 words or less. Near monopolies should receive the highest score. Three, give me a score out of 10 based on how fast this company's market is going to grow over the next 5 years and explain your thinking. 50 words or less. Only provide these three things and nothing else."
         
         try:
             logger.debug(f"Requesting description for {company_name}")
@@ -53,7 +54,7 @@ class PerplexityClient:
                         }
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 60
+                    "max_tokens": 200
                 },
                 timeout=10
             )
@@ -67,11 +68,8 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 description = re.sub(r'\[\d+\]|\[\d*$', '', description).strip()
-                # Ensure it's roughly 30 words
-                words = description.split()
-                if len(words) > 35:
-                    description = ' '.join(words[:30]) + '...'
-                logger.debug(f"Got description for {company_name}: {len(words)} words")
+                logger.debug(f"Got full response for {company_name}")
+                # Return the full structured response
                 return description
             else:
                 logger.warning(f"No description in response for {company_name}")
@@ -348,6 +346,118 @@ class PerplexityClient:
                 logger.warning(f"Failed to get P/S ratio for {company}: {error_msg}")
         
         logger.info(f"Successfully fetched P/S ratios for {successful}/{len(company_names)} companies")
+        return results, successful
+    
+    def is_technical_company(self, company_name: str) -> Optional[bool]:
+        """Determine if a company requires significant technical/engineering expertise.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            True if technical/engineering-heavy, False if not, None if error
+        """
+        prompt = f"Does {company_name} require significant technical or engineering expertise in its core operations (including software, hardware, aerospace, manufacturing, industrial, scientific, or R&D)? Answer only 'yes' or 'no'."
+        
+        try:
+            logger.debug(f"Checking if {company_name} is technical/engineering-heavy")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 10
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract yes/no from response
+            if 'choices' in data and len(data['choices']) > 0:
+                answer = data['choices'][0]['message']['content'].strip().lower()
+                # Remove citation markers
+                import re
+                answer = re.sub(r'\[\d+\]|\[\d*$', '', answer).strip()
+                
+                if 'yes' in answer:
+                    logger.debug(f"{company_name} is technical/engineering-heavy")
+                    return True
+                elif 'no' in answer:
+                    logger.debug(f"{company_name} is not technical/engineering-heavy")
+                    return False
+                else:
+                    logger.warning(f"Unclear answer for {company_name}: {answer}")
+                    return None
+            else:
+                logger.warning(f"No answer in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout checking technical nature for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error checking technical nature for {company_name}: {e}")
+            raise RequestException(str(e))
+    
+    def get_technical_companies_batch(self, company_names: list, 
+                                      progress_callback: Optional[Callable] = None,
+                                      delay: float = 0.5) -> dict:
+        """Check if multiple companies are technical/engineering-heavy.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to boolean values
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                is_technical = self.is_technical_company(company)
+                results[company] = is_technical
+                if is_technical is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "technical_check")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "Unclear response")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to check technical nature for {company}: {error_msg}")
+        
+        logger.info(f"Successfully checked technical nature for {successful}/{len(company_names)} companies")
         return results, successful
     
     def __enter__(self):

@@ -38,7 +38,16 @@ def main():
                 test_stock[0]['name'] = profile['companyName']
                 print(f"Using company name: {test_stock[0]['name']}")
             
-            print(f"Fetching Perplexity data...")
+            # Check technical nature first
+            print(f"Checking technical nature...")
+            test_stock = api.check_technical_nature(test_stock, config.perplexity_api_key)
+            
+            # Check if it's technical
+            if test_stock[0].get('is_technical') is False:
+                print(f"Note: {test_stock[0]['name']} is not a technical/engineering-heavy company")
+            
+            # Fetch remaining Perplexity data
+            print(f"Fetching detailed company data...")
             test_stock = api.enrich_with_descriptions(test_stock, config.perplexity_api_key)
     
     # Send email

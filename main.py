@@ -138,9 +138,9 @@ def main() -> None:
                 # Show filter results
                 print(f" ({initial_count} → {after_market_cap} → {after_industry} qualify)")
             
-            # Enrich with company descriptions, growth rates, and P/S ratios if Perplexity API is configured
+            # Check technical nature and filter before enriching with other data
             if sorted_gainers and config.perplexity_api_key:
-                print("\nFetching company data:")
+                print("\nChecking technical nature:")
                 
                 def progress_callback(company, success, data_type=None):
                     if success:
@@ -148,23 +148,42 @@ def main() -> None:
                             print(f"  → {company} growth rate ✓")
                         elif data_type == "ps_ratio":
                             print(f"  → {company} P/S ratio ✓")
+                        elif data_type == "technical_check":
+                            print(f"  → {company} technical check ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:
                         # data_type contains error message when success is False
                         print(f"  → {company} ✗ ({data_type})")
                 
-                sorted_gainers = api_client.enrich_with_descriptions(
+                # First, check technical nature only
+                sorted_gainers = api_client.check_technical_nature(
                     sorted_gainers,
                     config.perplexity_api_key,
                     progress_callback=progress_callback
                 )
                 
-                # Count successful fetches
-                desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
-                growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
-                ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
-                print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)})")
+                # Filter by technical nature
+                print("✓ Applying technical filter...", end="", flush=True)
+                before_tech = len(sorted_gainers)
+                sorted_gainers = api_client.filter_by_technical_nature(sorted_gainers)
+                after_tech = len(sorted_gainers)
+                print(f" ({before_tech} → {after_tech} technical companies)")
+                
+                # Now enrich only the technical companies with remaining data
+                if sorted_gainers:
+                    print("\nFetching detailed company data:")
+                    sorted_gainers = api_client.enrich_with_descriptions(
+                        sorted_gainers,
+                        config.perplexity_api_key,
+                        progress_callback=progress_callback
+                    )
+                    
+                    # Count successful fetches
+                    desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
+                    growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
+                    ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
+                    print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)})")
             
             # Log top gainers
             if sorted_gainers:
