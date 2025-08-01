@@ -32,6 +32,7 @@ jobs:
         EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
         SMTP_SERVER: smtp.gmail.com
         SMTP_PORT: 587
       run: |
