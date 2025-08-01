@@ -122,6 +122,9 @@ class FMPAPIClient:
     def get_daily_gainers(self) -> List[Dict[str, Any]]:
         """Fetch daily stock gainers from the API.
         
+        Note: This endpoint returns only the top 50 gainers. Stocks with gains
+        below the top 50 threshold will not be included, even if they gained 10%+.
+        
         Returns:
             List of stock dictionaries containing gainer information
             
@@ -143,7 +146,7 @@ class FMPAPIClient:
                 logger.error(f"API error: {error_msg}")
                 raise RequestException(f"API error: {error_msg}")
             
-            logger.debug(f"Successfully fetched {len(data)} gainers")
+            logger.info(f"Successfully fetched {len(data)} gainers from FMP API (top 50 only)")
             return data
             
         except Timeout:
