@@ -477,7 +477,7 @@ class PerplexityClient:
         for attempt in range(max_retries):
             try:
                 if attempt > 0:
-                    retry_delay = 5 * (attempt + 1)  # 10, 15, 20 seconds
+                    retry_delay = 30 * (attempt + 1)  # 60, 90, 120 seconds
                     logger.info(f"Retrying deep research after {retry_delay}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(retry_delay)
                 
@@ -496,7 +496,7 @@ class PerplexityClient:
                         "temperature": 0.1,
                         "max_tokens": 4000  # Deep research needs more tokens
                     },
-                    timeout=120  # Deep research can take up to 60 seconds
+                    timeout=600  # Deep research can take up to 10 minutes
                 )
                 
                 response.raise_for_status()
