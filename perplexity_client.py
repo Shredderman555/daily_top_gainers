@@ -548,4 +548,8 @@ class PerplexityClient:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - close the session."""
-        self.session.close()
+        try:
+            self.session.close()
+        except Exception as e:
+            # Ignore errors during cleanup
+            logger.debug(f"Session cleanup error (non-critical): {e}")

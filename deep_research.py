@@ -196,12 +196,28 @@ def generate_deep_research(symbol: str, company_name: Optional[str] = None) -> i
         
         # Send using SMTP
         import smtplib
-        with smtplib.SMTP(config.smtp_server, config.smtp_port) as server:
-            server.starttls()
-            server.login(config.email_sender, config.email_password)
-            server.send_message(msg)
+        email_sent = False
+        try:
+            with smtplib.SMTP(config.smtp_server, config.smtp_port) as server:
+                server.starttls()
+                server.login(config.email_sender, config.email_password)
+                server.send_message(msg)
+                email_sent = True
+                logger.info("Research report sent successfully!")
+        except Exception as smtp_error:
+            logger.error(f"Failed to send email: {smtp_error}")
+            return 1
         
-        logger.info("Research report sent successfully!")
+        # If email was sent successfully, return success even if there are cleanup errors
+        if email_sent:
+            logger.info(f"Deep research report for {symbol} completed and emailed successfully")
+            return 0
+        else:
+            return 1
+        
+    except ConnectionResetError as e:
+        # Connection reset errors during cleanup are not critical if email was sent
+        logger.warning(f"Connection reset during cleanup (non-critical): {e}")
         return 0
         
     except Exception as e:
