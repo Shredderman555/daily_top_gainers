@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generating Research Report...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .symbol {
+            color: #0066cc;
+            font-weight: 600;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+        .pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .close-info {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Deep Research Report</h1>
+        <p>for <span class="symbol" id="stockInfo">...</span></p>
+        
+        <div class="status pending" id="status">
+            <span class="spinner"></span>
+            <span id="statusText">Triggering research generation...</span>
+        </div>
+        
+        <div class="close-info">
+            You can close this window. The research report will be emailed to you in 2-5 minutes.
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const GITHUB_TOKEN = 'ghp_' + 'PLACEHOLDER_TOKEN'; // Will be replaced with actual token
+        const OWNER = 'Shredderman555';
+        const REPO = 'daily_top_gainers';
+        const WORKFLOW_ID = 'deep-research.yml';
+        
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const symbol = urlParams.get('symbol');
+        const companyName = urlParams.get('name');
+        const token = urlParams.get('token');
+        
+        // Security check - validate token
+        const expectedToken = 'research2024'; // Simple token for now
+        
+        // Update UI with stock info
+        document.getElementById('stockInfo').textContent = 
+            companyName ? `${companyName} (${symbol})` : symbol;
+        
+        async function triggerResearch() {
+            // Validate inputs
+            if (!symbol) {
+                showError('Missing stock symbol');
+                return;
+            }
+            
+            if (token !== expectedToken) {
+                showError('Invalid request token');
+                return;
+            }
+            
+            try {
+                // Prepare the API request
+                const url = `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`;
+                
+                const payload = {
+                    ref: 'main',
+                    inputs: {
+                        symbol: symbol
+                    }
+                };
+                
+                if (companyName) {
+                    payload.inputs.company_name = companyName;
+                }
+                
+                // Make the request
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.status === 204) {
+                    showSuccess();
+                } else {
+                    const errorText = await response.text();
+                    console.error('GitHub API Error:', response.status, errorText);
+                    showError(`Failed to trigger workflow (${response.status})`);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error - please try again');
+            }
+        }
+        
+        function showSuccess() {
+            const status = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            
+            status.className = 'status success';
+            status.innerHTML = '✓ <span id="statusText">Research generation started!</span>';
+            
+            // Auto-close after 5 seconds
+            setTimeout(() => {
+                window.close();
+                // Fallback if window.close() doesn't work
+                document.body.innerHTML = '<div class="container"><h1>✓ Success</h1><p>You can close this window now.</p></div>';
+            }, 5000);
+        }
+        
+        function showError(message) {
+            const status = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            
+            status.className = 'status error';
+            status.innerHTML = `✗ <span id="statusText">${message}</span>`;
+        }
+        
+        // Trigger the research when page loads
+        if (symbol) {
+            triggerResearch();
+        } else {
+            showError('No stock symbol provided');
+        }
+    </script>
+</body>
+</html>
