@@ -87,10 +87,12 @@
 
     <script>
         // Configuration
-        const GITHUB_TOKEN = 'ghp_' + 'PLACEHOLDER_TOKEN'; // Will be replaced with actual token
         const OWNER = 'Shredderman555';
         const REPO = 'daily_top_gainers';
         const WORKFLOW_ID = 'deep-research.yml';
+        
+        // Get token from localStorage
+        const GITHUB_TOKEN = localStorage.getItem('github_research_token');
         
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -106,6 +108,12 @@
             companyName ? `${companyName} (${symbol})` : symbol;
         
         async function triggerResearch() {
+            // Check if token is configured
+            if (!GITHUB_TOKEN) {
+                showError('GitHub token not configured. <a href="instructions.html" style="color: white;">Click here for setup instructions</a>');
+                return;
+            }
+            
             // Validate inputs
             if (!symbol) {
                 showError('Missing stock symbol');
@@ -177,7 +185,7 @@
             const statusText = document.getElementById('statusText');
             
             status.className = 'status error';
-            status.innerHTML = `✗ <span id="statusText">${message}</span>`;
+            status.innerHTML = `✗ <span>${message}</span>`;
         }
         
         // Trigger the research when page loads

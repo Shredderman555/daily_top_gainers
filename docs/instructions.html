@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Instructions - Deep Research</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #0066cc;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .steps {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .token-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0052a3;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Setup Instructions</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Important:</strong> Your GitHub token was detected in the code and blocked for security. 
+        This is a security feature. Follow these instructions to set up the token securely.
+    </div>
+
+    <div class="steps">
+        <h2>Option 1: Use GitHub Repository Secret (Recommended)</h2>
+        <ol>
+            <li>Go to your repository settings: <a href="https://github.com/Shredderman555/daily_top_gainers/settings/secrets/actions" target="_blank">Settings → Secrets → Actions</a></li>
+            <li>Click "New repository secret"</li>
+            <li>Name: <code>RESEARCH_TRIGGER_TOKEN</code></li>
+            <li>Value: Your GitHub personal access token</li>
+            <li>Click "Add secret"</li>
+            <li>Update the workflow to use this secret</li>
+        </ol>
+
+        <h2>Option 2: Local Storage (For Personal Use)</h2>
+        <p>Store your token in your browser's local storage:</p>
+        <input type="password" id="tokenInput" class="token-input" placeholder="Paste your GitHub token here (ghp_...)">
+        <button onclick="saveToken()">Save Token Locally</button>
+        <div id="success" class="success">
+            ✓ Token saved! You can now use the research buttons.
+        </div>
+    </div>
+
+    <div class="steps">
+        <h2>How to Create a GitHub Token</h2>
+        <ol>
+            <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank">GitHub Token Settings</a></li>
+            <li>Name: "Daily Top Gainers Research"</li>
+            <li>Expiration: 90 days or more</li>
+            <li>Select scopes: ✓ <strong>repo</strong> and ✓ <strong>workflow</strong></li>
+            <li>Click "Generate token"</li>
+            <li>Copy the token (starts with <code>ghp_</code>)</li>
+        </ol>
+    </div>
+
+    <script>
+        function saveToken() {
+            const token = document.getElementById('tokenInput').value;
+            if (!token.startsWith('ghp_')) {
+                alert('Invalid token format. GitHub tokens start with "ghp_"');
+                return;
+            }
+            localStorage.setItem('github_research_token', token);
+            document.getElementById('success').style.display = 'block';
+            document.getElementById('tokenInput').value = '';
+        }
+
+        // Check if token exists
+        if (localStorage.getItem('github_research_token')) {
+            document.getElementById('success').style.display = 'block';
+            document.getElementById('success').innerHTML = '✓ Token already configured. <a href="trigger.html">Test it here</a>';
+        }
+    </script>
+</body>
+</html>
