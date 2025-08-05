@@ -72,6 +72,102 @@ Industry growth"""
     return prompt
 
 
+def format_research_content(content: str) -> str:
+    """Format research content from markdown-style to HTML.
+    
+    Args:
+        content: Raw research content with markdown formatting
+        
+    Returns:
+        HTML formatted content
+    """
+    import re
+    
+    # Remove citation brackets [1], [2], etc.
+    content = re.sub(r'\[\d+\]', '', content)
+    
+    # Convert **text** to <strong>text</strong>
+    content = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', content)
+    
+    # Split into sections based on common headers
+    sections = []
+    current_section = []
+    
+    lines = content.strip().split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Check if this line is a section header
+        is_section_header = any(header in line.lower() for header in [
+            'competitive advantage', 'competitive landscape', 'market share', 
+            'valuation', 'irr buildup', 'revenue change', 'ps ratio change',
+            'factors influencing', 'what they do'
+        ])
+        
+        if is_section_header and current_section:
+            # Process the previous section
+            sections.append(format_section(current_section))
+            current_section = [line]
+        else:
+            current_section.append(line)
+    
+    # Don't forget the last section
+    if current_section:
+        sections.append(format_section(current_section))
+    
+    return '\n'.join(sections)
+
+
+def format_section(lines: list) -> str:
+    """Format a section of content."""
+    if not lines:
+        return ''
+    
+    formatted = []
+    first_line = lines[0].strip()
+    
+    # Check if it's a header
+    if any(header in first_line.lower() for header in [
+        'competitive advantage', 'competitive landscape', 'market share', 
+        'valuation', 'irr buildup', 'revenue change', 'ps ratio change'
+    ]):
+        # Make it a styled header
+        formatted.append(f'<h3 style="color: #0066cc; margin: 30px 0 15px 0; font-size: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px;">{first_line}</h3>')
+        remaining_lines = lines[1:]
+    else:
+        remaining_lines = lines
+    
+    # Process remaining lines
+    for line in remaining_lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Check if it's a metric line
+        if ':' in line and any(metric in line.lower() for metric in [
+            'market cap', 'rev gr', 'ps', 'gross margin', 'r&d', 'irr'
+        ]):
+            parts = line.split(':', 1)
+            if len(parts) == 2:
+                label, value = parts
+                formatted.append(f'''
+                    <div style="background-color: #f8f9fa; padding: 12px 16px; margin: 8px 0; border-radius: 8px; display: flex; justify-content: space-between;">
+                        <strong style="color: #333;">{label.strip()}:</strong>
+                        <span style="color: #0066cc; font-weight: 500;">{value.strip()}</span>
+                    </div>
+                ''')
+            else:
+                formatted.append(f'<p style="margin: 12px 0; line-height: 1.7; color: #444;">{line}</p>')
+        # Check if it's an IRR or score line
+        elif any(keyword in line.lower() for keyword in ['irr over', 'score:', '/10']):
+            formatted.append(f'<div style="background-color: #e8f4f8; padding: 16px; margin: 16px 0; border-radius: 8px; border-left: 4px solid #0066cc;"><strong style="font-size: 18px; color: #0066cc;">{line}</strong></div>')
+        else:
+            formatted.append(f'<p style="margin: 12px 0; line-height: 1.7; color: #444;">{line}</p>')
+    
+    return ''.join(formatted)
+
+
 def create_research_email_html(company_name: str, symbol: str, research_content: str, 
                               stock_data: Optional[Dict[str, Any]] = None) -> str:
     """Create HTML email for the deep research report.
@@ -93,23 +189,30 @@ def create_research_email_html(company_name: str, symbol: str, research_content:
             change_percent = change_percent.replace('%', '')
         gain_info = f" | Today's Gain: {change_percent}%"
     
+    # Format the research content
+    formatted_content = format_research_content(research_content)
+    
     html = f"""
     <html>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff;">
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f7fa;">
             <div style="max-width: 800px; margin: 0 auto; padding: 40px 20px;">
-                <h1 style="color: #000; text-align: center; margin-bottom: 10px; font-weight: 600;">
-                    Deep Research Report
-                </h1>
-                <h2 style="color: #666; text-align: center; margin-bottom: 40px; font-weight: 500;">
-                    {company_name} ({symbol}){gain_info}
-                </h2>
-                
-                <div style="background-color: #f5f5f5; border-radius: 16px; padding: 30px; margin-bottom: 20px;">
-                    <div style="white-space: pre-wrap; color: #333; font-size: 15px; line-height: 1.6;">
-{research_content}
-                    </div>
+                <!-- Header -->
+                <div style="background-color: white; border-radius: 16px; padding: 30px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h1 style="color: #1a1a1a; text-align: center; margin-bottom: 10px; font-weight: 600; font-size: 32px;">
+                        Deep Research Report
+                    </h1>
+                    <h2 style="color: #0066cc; text-align: center; margin-bottom: 0; font-weight: 500; font-size: 24px;">
+                        {company_name} ({symbol})
+                    </h2>
+                    {f'<p style="color: #666; text-align: center; margin-top: 10px; font-size: 16px;">{gain_info[3:]}</p>' if gain_info else ''}
                 </div>
                 
+                <!-- Main Content -->
+                <div style="background-color: white; border-radius: 16px; padding: 40px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    {formatted_content}
+                </div>
+                
+                <!-- Footer -->
                 <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px;">
                     Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
                 </p>
