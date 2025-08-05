@@ -187,9 +187,20 @@ class EmailSender:
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Market Growth: {growth_score_display}
                     </p>
-                    <p style="margin: 0; color: #333; font-size: 16px; line-height: 1.5;">
+                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {market_growth_reasoning if market_growth_reasoning else "Analysis not available"}
                     </p>
+                    
+                    <!-- Deep Research Button -->
+                    <div style="text-align: center; margin-top: 24px;">
+                        <a href="https://github.com/Shredderman555/daily_top_gainers/actions/workflows/deep-research.yml?symbol={symbol}&name={name.replace(' ', '%20')}" 
+                           style="display: inline-block; background-color: #0066cc; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 500;">
+                            Generate Deep Research Report
+                        </a>
+                        <p style="margin: 8px 0 0 0; color: #999; font-size: 12px;">
+                            Click to trigger in-depth analysis (requires GitHub login)
+                        </p>
+                    </div>
                 </div>
             """)
         

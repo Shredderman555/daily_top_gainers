@@ -1,0 +1,59 @@
+name: Generate Deep Research Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: 'Stock symbol (e.g., AAPL, MSFT)'
+        required: true
+        type: string
+      company_name:
+        description: 'Company name (optional)'
+        required: false
+        type: string
+  repository_dispatch:
+    types: [deep-research]
+
+jobs:
+  generate-research:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Generate Deep Research Report
+      env:
+        FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      run: |
+        # Handle both workflow_dispatch and repository_dispatch
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          SYMBOL="${{ github.event.inputs.symbol }}"
+          COMPANY_NAME="${{ github.event.inputs.company_name }}"
+        else
+          SYMBOL="${{ github.event.client_payload.symbol }}"
+          COMPANY_NAME="${{ github.event.client_payload.company_name }}"
+        fi
+        
+        echo "Generating deep research report for $SYMBOL"
+        
+        if [ -n "$COMPANY_NAME" ]; then
+          python deep_research.py "$SYMBOL" --name "$COMPANY_NAME"
+        else
+          python deep_research.py "$SYMBOL"
+        fi

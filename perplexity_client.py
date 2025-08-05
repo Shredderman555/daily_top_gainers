@@ -464,6 +464,88 @@ class PerplexityClient:
         """Context manager entry."""
         return self
     
+    def get_deep_research(self, prompt: str, max_retries: int = 3) -> Optional[str]:
+        """Generate deep research using sonar-deep-research model.
+        
+        Args:
+            prompt: Research prompt
+            max_retries: Maximum number of retry attempts
+            
+        Returns:
+            Deep research report or None if error
+        """
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    retry_delay = 5 * (attempt + 1)  # 10, 15, 20 seconds
+                    logger.info(f"Retrying deep research after {retry_delay}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                
+                logger.debug(f"Requesting deep research (attempt {attempt + 1}/{max_retries})")
+                
+                response = self.session.post(
+                    f"{self.BASE_URL}/chat/completions",
+                    json={
+                        "model": "sonar-deep-research",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        "temperature": 0.1,
+                        "max_tokens": 4000  # Deep research needs more tokens
+                    },
+                    timeout=120  # Deep research can take up to 60 seconds
+                )
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                # Extract research from response
+                if 'choices' in data and len(data['choices']) > 0:
+                    research = data['choices'][0]['message']['content'].strip()
+                    logger.debug(f"Got deep research response ({len(research)} chars)")
+                    return research
+                else:
+                    logger.warning("No research in response")
+                    return None
+                    
+            except Timeout:
+                logger.warning(f"Timeout getting deep research (attempt {attempt + 1}/{max_retries})")
+                if attempt == max_retries - 1:
+                    return None
+                continue
+                
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    logger.warning(f"Rate limit hit for deep research (attempt {attempt + 1}/{max_retries})")
+                    if attempt == max_retries - 1:
+                        return None
+                    continue
+                elif e.response.status_code >= 500:
+                    # Server errors are retryable
+                    logger.warning(f"Server error {e.response.status_code} for deep research (attempt {attempt + 1}/{max_retries})")
+                    if attempt == max_retries - 1:
+                        return None
+                    continue
+                else:
+                    # Client errors are not retryable
+                    logger.error(f"HTTP error for deep research: {e}")
+                    if e.response.text:
+                        logger.error(f"Response body: {e.response.text}")
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Unexpected error getting deep research: {e}")
+                return None
+        
+        return None
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - close the session."""
         self.session.close()
