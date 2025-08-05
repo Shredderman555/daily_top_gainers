@@ -42,7 +42,14 @@ class Config:
     @property
     def smtp_port(self) -> int:
         """Get SMTP server port."""
-        return int(os.getenv('SMTP_PORT', '587'))
+        port_str = os.getenv('SMTP_PORT', '587')
+        try:
+            return int(port_str)
+        except ValueError:
+            print(f"Error: Invalid SMTP_PORT value: '{port_str}'. Must be a number (e.g., 587).")
+            print("Please check your GitHub Secrets or environment variables.")
+            # Default to 587 for Gmail
+            return 587
     
     @property
     def perplexity_api_key(self) -> str:
