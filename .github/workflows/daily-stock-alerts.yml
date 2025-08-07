@@ -2,8 +2,8 @@ name: Daily Stock Alerts
 
 on:
   schedule:
-    # Run at 10:00 PM UTC (6:00 PM ET)
-    - cron: '0 22 * * *'
+    # Run at 8:05 PM UTC (4:05 PM ET)
+    - cron: '5 20 * * *'
   
   # Allow manual trigger for testing
   workflow_dispatch:
