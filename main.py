@@ -150,6 +150,8 @@ def main() -> None:
                             print(f"  → {company} P/S ratio ✓")
                         elif data_type == "technical_check":
                             print(f"  → {company} technical check ✓")
+                        elif data_type == "earnings_guidance":
+                            print(f"  → {company} earnings guidance ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:
@@ -183,7 +185,8 @@ def main() -> None:
                     desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
                     growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
                     ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
-                    print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)})")
+                    guidance_successful = sum(1 for stock in sorted_gainers if stock.get('earnings_guidance'))
+                    print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)})")
             
             # Log top gainers
             if sorted_gainers:

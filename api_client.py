@@ -416,7 +416,7 @@ class FMPAPIClient:
     def enrich_with_descriptions(self, stocks: List[Dict[str, Any]], 
                                  perplexity_api_key: str,
                                  progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
-        """Enrich stock data with company descriptions, growth rates, and P/S ratios from Perplexity.
+        """Enrich stock data with company descriptions, growth rates, P/S ratios, and earnings guidance from Perplexity.
         
         Args:
             stocks: List of stock dictionaries
@@ -424,7 +424,7 @@ class FMPAPIClient:
             progress_callback: Optional callback for progress updates
             
         Returns:
-            List of stocks with added description, growth rate, and P/S ratio data
+            List of stocks with added description, growth rate, P/S ratio, and earnings guidance data
         """
         if not perplexity_api_key:
             logger.warning("No Perplexity API key provided, skipping descriptions")
@@ -466,7 +466,14 @@ class FMPAPIClient:
                 delay=1.5
             )
             
-            # Add descriptions, growth rates, and P/S ratios to stock data
+            # Fetch earnings guidance
+            earnings_guidance, guidance_successful = client.get_earnings_guidance_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add descriptions, growth rates, P/S ratios, and earnings guidance to stock data
             for stock, company_name in zip(stocks, company_names):
                 # Parse the structured description response
                 full_description = descriptions.get(company_name, None)
@@ -486,10 +493,12 @@ class FMPAPIClient:
                 
                 stock['growth_rate'] = growth_rates.get(company_name, None)
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
+                stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
         
         return stocks
     

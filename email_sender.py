@@ -138,6 +138,9 @@ class EmailSender:
             market_growth_score = stock.get('market_growth_score', None)
             market_growth_reasoning = stock.get('market_growth_reasoning', '')
             
+            # Get earnings guidance
+            earnings_guidance = stock.get('earnings_guidance', None)
+            
             # Format scores
             competitive_display = f"{competitive_score}/10" if competitive_score is not None else "N/A"
             growth_score_display = f"{market_growth_score}/10" if market_growth_score is not None else "N/A"
@@ -187,8 +190,16 @@ class EmailSender:
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Market Growth: {growth_score_display}
                     </p>
-                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                    <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {market_growth_reasoning if market_growth_reasoning else "Analysis not available"}
+                    </p>
+                    
+                    <!-- Earnings Guidance -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Earnings Guidance Update
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {earnings_guidance if earnings_guidance else "No recent earnings guidance updates available"}
                     </p>
                     
                     <!-- Deep Research Button -->

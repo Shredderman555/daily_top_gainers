@@ -460,6 +460,110 @@ class PerplexityClient:
         logger.info(f"Successfully checked technical nature for {successful}/{len(company_names)} companies")
         return results, successful
     
+    def get_earnings_guidance(self, company_name: str) -> Optional[str]:
+        """Get earnings guidance update for the company.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            Summary of guidance changes or None if error
+        """
+        prompt = f"Critical, answer exactly in this format: {company_name} last reported earnings on [date] and [commentary on how top and bottom line guidance changed]"
+        
+        try:
+            logger.debug(f"Requesting earnings guidance for {company_name}")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 300
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract guidance info from response
+            if 'choices' in data and len(data['choices']) > 0:
+                guidance = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                guidance = re.sub(r'\[\d+\]|\[\d*$', '', guidance).strip()
+                logger.debug(f"Got earnings guidance for {company_name}")
+                return guidance
+            else:
+                logger.warning(f"No earnings guidance in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout getting earnings guidance for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error getting earnings guidance for {company_name}: {e}")
+            raise RequestException(str(e))
+    
+    def get_earnings_guidance_batch(self, company_names: list, 
+                                    progress_callback: Optional[Callable] = None,
+                                    delay: float = 0.5) -> dict:
+        """Get earnings guidance for multiple companies with rate limiting.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to earnings guidance
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                guidance = self.get_earnings_guidance(company)
+                results[company] = guidance
+                if guidance is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "earnings_guidance")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to get earnings guidance for {company}: {error_msg}")
+        
+        logger.info(f"Successfully fetched earnings guidance for {successful}/{len(company_names)} companies")
+        return results, successful
+    
     def __enter__(self):
         """Context manager entry."""
         return self
