@@ -588,7 +588,14 @@ class FMPAPIClient:
                 delay=1.5
             )
             
-            # Add descriptions, P/S ratios, and earnings guidance to stock data
+            # Fetch analyst price targets
+            analyst_price_targets, price_targets_successful = client.get_analyst_price_targets_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add descriptions, P/S ratios, earnings guidance, and analyst price targets to stock data
             for stock, company_name in zip(stocks, company_names):
                 # Parse the structured description response
                 full_description = descriptions.get(company_name, None)
@@ -597,8 +604,8 @@ class FMPAPIClient:
                     stock['description'] = parsed['short_description']
                     stock['competitive_score'] = parsed['competitive_score']
                     stock['competitive_reasoning'] = parsed['competitive_reasoning']
-                    stock['market_growth_score'] = parsed['market_growth_score']
-                    stock['market_growth_reasoning'] = parsed['market_growth_reasoning']
+                    stock['market_growth_score'] = parsed['growth_score']
+                    stock['market_growth_reasoning'] = parsed['growth_reasoning']
                 else:
                     stock['description'] = None
                     stock['competitive_score'] = None
@@ -608,10 +615,12 @@ class FMPAPIClient:
                 
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
+                stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched analyst price targets for {price_targets_successful}/{len(stocks)} companies")
         
         return stocks
     

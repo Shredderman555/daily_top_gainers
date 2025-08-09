@@ -38,7 +38,7 @@ class PerplexityClient:
             Structured response with description, competitive advantage score/reasoning,
             and market growth score/reasoning, or None if error
         """
-        prompt = f"Do three things. One, Give me a description of what {company_name} does in 20 words or less. Two, give a score out of 10 as to how strong this companies competitive advantage is based on how effectively it's competitors can compete with this company and explain your reasoning in 50 words or less. Near monopolies should receive the highest score. Three, give me a score out of 10 based on how fast this company's market is going to grow over the next 5 years and explain your thinking. 50 words or less. Only provide these three things and nothing else."
+        prompt = f"Do three things. One, Give me a description of what {company_name} does in 50 words or less. Two, give a score out of 10 as to how strong this companies competitive advantage is based on how effectively it's competitors can compete with this company and explain your reasoning in 50 words or less. Near monopolies should receive the highest score. Three, give me a score out of 10 based on how fast this company's market is going to grow over the next 5 years and explain your thinking. 50 words or less. Only provide these three things and nothing else."
         
         try:
             logger.debug(f"Requesting description for {company_name}")
@@ -562,6 +562,110 @@ class PerplexityClient:
                 logger.warning(f"Failed to get earnings guidance for {company}: {error_msg}")
         
         logger.info(f"Successfully fetched earnings guidance for {successful}/{len(company_names)} companies")
+        return results, successful
+    
+    def get_analyst_price_targets(self, company_name: str) -> Optional[str]:
+        """Get analyst price target changes for the company.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            Summary of analyst price target changes or None if error
+        """
+        prompt = f"Tell me about {company_name} analyst price target changes over the last week and the last 6 months. 50 words or less."
+        
+        try:
+            logger.debug(f"Requesting analyst price targets for {company_name}")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 300
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract price target info from response
+            if 'choices' in data and len(data['choices']) > 0:
+                price_targets = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                price_targets = re.sub(r'\[\d+\]|\[\d*$', '', price_targets).strip()
+                logger.debug(f"Got analyst price targets for {company_name}")
+                return price_targets
+            else:
+                logger.warning(f"No analyst price targets in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout getting analyst price targets for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error getting analyst price targets for {company_name}: {e}")
+            raise RequestException(str(e))
+    
+    def get_analyst_price_targets_batch(self, company_names: list, 
+                                        progress_callback: Optional[Callable] = None,
+                                        delay: float = 0.5) -> dict:
+        """Get analyst price targets for multiple companies with rate limiting.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to analyst price targets
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                price_targets = self.get_analyst_price_targets(company)
+                results[company] = price_targets
+                if price_targets is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "analyst_price_targets")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to get analyst price targets for {company}: {error_msg}")
+        
+        logger.info(f"Successfully fetched analyst price targets for {successful}/{len(company_names)} companies")
         return results, successful
     
     def __enter__(self):

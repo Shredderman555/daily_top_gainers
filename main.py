@@ -152,6 +152,8 @@ def main() -> None:
                             print(f"  → {company} technical check ✓")
                         elif data_type == "earnings_guidance":
                             print(f"  → {company} earnings guidance ✓")
+                        elif data_type == "analyst_price_targets":
+                            print(f"  → {company} analyst price targets ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:

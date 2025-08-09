@@ -141,6 +141,9 @@ class EmailSender:
             # Get earnings guidance
             earnings_guidance = stock.get('earnings_guidance', None)
             
+            # Get analyst price targets
+            analyst_price_targets = stock.get('analyst_price_targets', None)
+            
             # Format scores
             competitive_display = f"{competitive_score}/10" if competitive_score is not None else "N/A"
             growth_score_display = f"{market_growth_score}/10" if market_growth_score is not None else "N/A"
@@ -198,8 +201,16 @@ class EmailSender:
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Earnings Guidance Update
                     </p>
-                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                    <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {earnings_guidance if earnings_guidance else "No recent earnings guidance updates available"}
+                    </p>
+                    
+                    <!-- Analyst Price Targets -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Analyst Price Target Changes
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {analyst_price_targets if analyst_price_targets else "No recent analyst price target changes available"}
                     </p>
                     
                     <!-- Deep Research Button -->
