@@ -331,6 +331,81 @@ class FMPAPIClient:
         logger.debug(f"Remaining stocks after technical filter: {len(filtered_stocks)}")
         return filtered_stocks
     
+    def filter_by_growth_rate(self, stocks: List[Dict[str, Any]], 
+                              min_growth: float = 10.0) -> List[Dict[str, Any]]:
+        """Filter stocks to keep only companies with minimum growth rate.
+        
+        Uses lenient approach: includes companies if ALL available years meet minimum,
+        excludes only if ANY available year is below minimum.
+        
+        Args:
+            stocks: List of stock dictionaries with growth_rate data
+            min_growth: Minimum acceptable growth rate percentage (default 10%)
+            
+        Returns:
+            Filtered list of stocks meeting growth criteria
+        """
+        import re
+        
+        filtered_stocks = []
+        excluded_count = 0
+        
+        for stock in stocks:
+            symbol = stock.get('symbol', 'Unknown')
+            name = stock.get('name', 'Unknown')
+            growth_rate = stock.get('growth_rate', '')
+            
+            # If no growth data, include (benefit of doubt)
+            if not growth_rate:
+                filtered_stocks.append(stock)
+                logger.debug(f"Including {symbol} - No growth data available")
+                continue
+            
+            # Parse growth rates from format like "2025: 20%, 2026: 21%, 2027: 22%"
+            year_pattern = r'(\d{4}):\s*([\d.-]+)(?:-[\d.]+)?%'
+            matches = re.findall(year_pattern, growth_rate)
+            
+            if not matches:
+                # Can't parse, include (benefit of doubt)
+                filtered_stocks.append(stock)
+                logger.debug(f"Including {symbol} - Could not parse growth rate: {growth_rate}")
+                continue
+            
+            # Check if all available years meet minimum
+            below_minimum = False
+            growth_values = []
+            
+            for year, rate_str in matches:
+                try:
+                    # Handle negative rates and ranges
+                    rate = float(rate_str)
+                    growth_values.append((year, rate))
+                    
+                    if rate < min_growth:
+                        below_minimum = True
+                        logger.debug(f"{symbol} has {year} growth of {rate}% (below {min_growth}%)")
+                except ValueError:
+                    # Can't parse this rate, skip it
+                    logger.debug(f"Could not parse rate for {symbol} {year}: {rate_str}")
+                    continue
+            
+            # Include only if no year is below minimum (or no valid data)
+            if not below_minimum and growth_values:
+                filtered_stocks.append(stock)
+                growth_summary = ", ".join([f"{yr}: {rt}%" for yr, rt in growth_values])
+                logger.debug(f"Including {symbol} - Growth rates: {growth_summary}")
+            elif below_minimum:
+                excluded_count += 1
+                logger.debug(f"Excluding {symbol} - Has growth below {min_growth}% threshold")
+            else:
+                # No valid growth values parsed, include
+                filtered_stocks.append(stock)
+                logger.debug(f"Including {symbol} - No valid growth rates parsed")
+        
+        logger.debug(f"Filtered {excluded_count} stocks with growth below {min_growth}%")
+        logger.debug(f"Remaining stocks after growth filter: {len(filtered_stocks)}")
+        return filtered_stocks
+    
     def filter_by_industry(self, stocks: List[Dict[str, Any]], 
                            exclude_biotech: bool = True) -> List[Dict[str, Any]]:
         """Filter stocks by industry, optionally excluding biotechnology.
@@ -410,6 +485,133 @@ class FMPAPIClient:
                 stock['is_technical'] = technical_checks.get(company_name, None)
             
             logger.info(f"Successfully checked technical nature for {tech_successful}/{len(stocks)} companies")
+        
+        return stocks
+    
+    def fetch_growth_rates(self, stocks: List[Dict[str, Any]], 
+                           perplexity_api_key: str,
+                           progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Fetch only growth rate data for stocks.
+        
+        Args:
+            stocks: List of stock dictionaries
+            perplexity_api_key: Perplexity API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added growth_rate data
+        """
+        if not perplexity_api_key:
+            logger.warning("No Perplexity API key provided, skipping growth rates")
+            return stocks
+        
+        logger.info("Fetching growth rates from Perplexity API")
+        
+        # Initialize Perplexity client
+        with PerplexityClient(perplexity_api_key) as client:
+            # Get company names with ticker symbols for better accuracy
+            company_names = []
+            for stock in stocks:
+                name = stock.get('name', stock.get('symbol', 'Unknown'))
+                symbol = stock.get('symbol', '')
+                # Format as "Company Name (SYMBOL)" if we have both
+                if name and symbol and name != symbol:
+                    company_names.append(f"{name} ({symbol})")
+                else:
+                    company_names.append(name)
+            
+            # Fetch growth rates
+            growth_rates, growth_successful = client.get_growth_rates_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add growth rates to stock data
+            for stock, company_name in zip(stocks, company_names):
+                stock['growth_rate'] = growth_rates.get(company_name, None)
+            
+            logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
+        
+        return stocks
+    
+    def enrich_remaining_data(self, stocks: List[Dict[str, Any]], 
+                              perplexity_api_key: str,
+                              progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Enrich stock data with descriptions, P/S ratios, and earnings guidance (excluding growth rates).
+        
+        Args:
+            stocks: List of stock dictionaries
+            perplexity_api_key: Perplexity API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added description, P/S ratio, and earnings guidance data
+        """
+        if not perplexity_api_key:
+            logger.warning("No Perplexity API key provided, skipping enrichment")
+            return stocks
+        
+        logger.info("Fetching company data from Perplexity API")
+        
+        # Initialize Perplexity client
+        with PerplexityClient(perplexity_api_key) as client:
+            # Get company names with ticker symbols for better accuracy
+            company_names = []
+            for stock in stocks:
+                name = stock.get('name', stock.get('symbol', 'Unknown'))
+                symbol = stock.get('symbol', '')
+                # Format as "Company Name (SYMBOL)" if we have both
+                if name and symbol and name != symbol:
+                    company_names.append(f"{name} ({symbol})")
+                else:
+                    company_names.append(name)
+            
+            # Fetch descriptions
+            descriptions, desc_successful = client.get_descriptions_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Fetch P/S ratios
+            ps_ratios, ps_successful = client.get_ps_ratios_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Fetch earnings guidance
+            earnings_guidance, guidance_successful = client.get_earnings_guidance_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add descriptions, P/S ratios, and earnings guidance to stock data
+            for stock, company_name in zip(stocks, company_names):
+                # Parse the structured description response
+                full_description = descriptions.get(company_name, None)
+                if full_description:
+                    parsed = self._parse_company_analysis(full_description)
+                    stock['description'] = parsed['short_description']
+                    stock['competitive_score'] = parsed['competitive_score']
+                    stock['competitive_reasoning'] = parsed['competitive_reasoning']
+                    stock['market_growth_score'] = parsed['market_growth_score']
+                    stock['market_growth_reasoning'] = parsed['market_growth_reasoning']
+                else:
+                    stock['description'] = None
+                    stock['competitive_score'] = None
+                    stock['competitive_reasoning'] = None
+                    stock['market_growth_score'] = None
+                    stock['market_growth_reasoning'] = None
+                
+                stock['ps_ratio'] = ps_ratios.get(company_name, None)
+                stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
+            
+            logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
         
         return stocks
     

@@ -172,21 +172,39 @@ def main() -> None:
                 after_tech = len(sorted_gainers)
                 print(f" ({before_tech} → {after_tech} technical companies)")
                 
-                # Now enrich only the technical companies with remaining data
+                # Fetch growth rates first and filter early to save API calls
                 if sorted_gainers:
-                    print("\nFetching detailed company data:")
-                    sorted_gainers = api_client.enrich_with_descriptions(
+                    print("\nFetching growth rates:")
+                    sorted_gainers = api_client.fetch_growth_rates(
                         sorted_gainers,
                         config.perplexity_api_key,
                         progress_callback=progress_callback
                     )
                     
-                    # Count successful fetches
-                    desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
                     growth_successful = sum(1 for stock in sorted_gainers if stock.get('growth_rate'))
-                    ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
-                    guidance_successful = sum(1 for stock in sorted_gainers if stock.get('earnings_guidance'))
-                    print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, growth rates: {growth_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)})")
+                    print(f"✓ Growth rates fetched ({growth_successful}/{len(sorted_gainers)} companies)")
+                    
+                    # Filter by growth rate (minimum 10% per year) BEFORE fetching other data
+                    print("\nFiltering by growth rate (minimum 10% per year)...")
+                    before_growth = len(sorted_gainers)
+                    sorted_gainers = api_client.filter_by_growth_rate(sorted_gainers, min_growth=10.0)
+                    after_growth = len(sorted_gainers)
+                    print(f" ({before_growth} → {after_growth} companies with ≥10% growth in all available years)")
+                    
+                    # Now fetch remaining data only for companies that passed growth filter
+                    if sorted_gainers:
+                        print("\nFetching remaining company data:")
+                        sorted_gainers = api_client.enrich_remaining_data(
+                            sorted_gainers,
+                            config.perplexity_api_key,
+                            progress_callback=progress_callback
+                        )
+                        
+                        # Count successful fetches
+                        desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
+                        ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
+                        guidance_successful = sum(1 for stock in sorted_gainers if stock.get('earnings_guidance'))
+                        print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)})")
             
             # Log top gainers
             if sorted_gainers:
