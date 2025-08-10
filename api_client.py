@@ -406,6 +406,73 @@ class FMPAPIClient:
         logger.debug(f"Remaining stocks after growth filter: {len(filtered_stocks)}")
         return filtered_stocks
     
+    def filter_by_2030_projection(self, stocks: List[Dict[str, Any]], 
+                                  min_growth: float = 10.0) -> List[Dict[str, Any]]:
+        """Filter stocks to keep only companies with minimum projected growth rate in 2030.
+        
+        Args:
+            stocks: List of stock dictionaries with revenue_projection_2030 data
+            min_growth: Minimum acceptable growth rate percentage (default 10%)
+            
+        Returns:
+            Filtered list of stocks meeting 2030 growth criteria
+        """
+        import re
+        
+        filtered_stocks = []
+        excluded_count = 0
+        
+        for stock in stocks:
+            symbol = stock.get('symbol', 'Unknown')
+            name = stock.get('name', 'Unknown')
+            projection = stock.get('revenue_projection_2030', '')
+            
+            # If no projection data, include (benefit of doubt)
+            if not projection:
+                filtered_stocks.append(stock)
+                logger.debug(f"Including {symbol} - No 2030 projection data available")
+                continue
+            
+            # Parse growth rate from projection
+            # Handle various formats: "2-4%", "2–4%", "2 to 4%", "15%"
+            growth_rate = None
+            
+            # Check for range with hyphen or em dash (e.g., "2-4%" or "2–4%")
+            range_match = re.search(r'^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*%', projection)
+            if range_match:
+                # Use the upper bound of the range
+                growth_rate = float(range_match.group(2))
+                logger.debug(f"{symbol} has range {range_match.group(1)}-{range_match.group(2)}%, using upper bound {growth_rate}%")
+            else:
+                # Check for "X to Y%" format
+                to_match = re.search(r'^(\d+(?:\.\d+)?)\s+to\s+(\d+(?:\.\d+)?)\s*%', projection, re.IGNORECASE)
+                if to_match:
+                    # Use the upper bound of the range
+                    growth_rate = float(to_match.group(2))
+                    logger.debug(f"{symbol} has range {to_match.group(1)} to {to_match.group(2)}%, using upper bound {growth_rate}%")
+                else:
+                    # Check for single value (e.g., "15%")
+                    single_match = re.search(r'^(\d+(?:\.\d+)?)\s*%', projection)
+                    if single_match:
+                        growth_rate = float(single_match.group(1))
+                        logger.debug(f"{symbol} has single value {growth_rate}%")
+            
+            if growth_rate is not None:
+                if growth_rate >= min_growth:
+                    filtered_stocks.append(stock)
+                    logger.debug(f"Including {symbol} - 2030 growth projection: {growth_rate}%")
+                else:
+                    excluded_count += 1
+                    logger.debug(f"Excluding {symbol} - 2030 growth projection {growth_rate}% below {min_growth}% threshold")
+            else:
+                # Could not parse growth rate, include (benefit of doubt)
+                filtered_stocks.append(stock)
+                logger.debug(f"Including {symbol} - Could not parse 2030 growth rate from projection")
+        
+        logger.debug(f"Filtered {excluded_count} stocks with 2030 projection below {min_growth}%")
+        logger.debug(f"Remaining stocks after 2030 projection filter: {len(filtered_stocks)}")
+        return filtered_stocks
+    
     def filter_by_industry(self, stocks: List[Dict[str, Any]], 
                            exclude_biotech: bool = True) -> List[Dict[str, Any]]:
         """Filter stocks by industry, optionally excluding biotechnology.
@@ -535,6 +602,53 @@ class FMPAPIClient:
         
         return stocks
     
+    def fetch_revenue_projection_2030(self, stocks: List[Dict[str, Any]], 
+                                      perplexity_api_key: str,
+                                      progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Fetch revenue projection for 2030 for all stocks.
+        
+        Args:
+            stocks: List of stock dictionaries
+            perplexity_api_key: Perplexity API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added revenue_projection_2030 data
+        """
+        if not perplexity_api_key:
+            logger.warning("No Perplexity API key provided, skipping revenue projections 2030")
+            return stocks
+        
+        logger.info("Fetching revenue projections for 2030 from Perplexity API")
+        
+        # Initialize Perplexity client
+        with PerplexityClient(perplexity_api_key) as client:
+            # Get company names with ticker symbols for better accuracy
+            company_names = []
+            for stock in stocks:
+                name = stock.get('name', stock.get('symbol', 'Unknown'))
+                symbol = stock.get('symbol', '')
+                # Format as "Company Name (SYMBOL)" if we have both
+                if name and symbol and name != symbol:
+                    company_names.append(f"{name} ({symbol})")
+                else:
+                    company_names.append(name)
+            
+            # Fetch revenue projections for 2030
+            revenue_projections_2030, projections_successful = client.get_revenue_projection_2030_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add revenue projections to stock data
+            for stock, company_name in zip(stocks, company_names):
+                stock['revenue_projection_2030'] = revenue_projections_2030.get(company_name, None)
+            
+            logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
+        
+        return stocks
+    
     def enrich_remaining_data(self, stocks: List[Dict[str, Any]], 
                               perplexity_api_key: str,
                               progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
@@ -595,14 +709,7 @@ class FMPAPIClient:
                 delay=1.5
             )
             
-            # Fetch revenue projections for 2030
-            revenue_projections_2030, projections_successful = client.get_revenue_projection_2030_batch(
-                company_names, 
-                progress_callback=progress_callback,
-                delay=1.5
-            )
-            
-            # Add descriptions, P/S ratios, earnings guidance, analyst price targets, and revenue projections to stock data
+            # Add descriptions, P/S ratios, earnings guidance, and analyst price targets to stock data
             for stock, company_name in zip(stocks, company_names):
                 # Parse the structured description response
                 full_description = descriptions.get(company_name, None)
@@ -623,13 +730,11 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
-                stock['revenue_projection_2030'] = revenue_projections_2030.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched analyst price targets for {price_targets_successful}/{len(stocks)} companies")
-            logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
         
         return stocks
     
@@ -729,14 +834,13 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
-                stock['revenue_projection_2030'] = revenue_projections_2030.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched analyst price targets for {price_targets_successful}/{len(stocks)} companies")
-            logger.info(f"Successfully fetched revenue projections for {projections_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
         
         return stocks
     

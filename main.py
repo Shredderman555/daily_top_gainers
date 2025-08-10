@@ -195,7 +195,26 @@ def main() -> None:
                     after_growth = len(sorted_gainers)
                     print(f" ({before_growth} → {after_growth} companies with ≥10% growth in all available years)")
                     
-                    # Now fetch remaining data only for companies that passed growth filter
+                    # Fetch revenue projections for 2030
+                    if sorted_gainers:
+                        print("\nFetching revenue projections for 2030:")
+                        sorted_gainers = api_client.fetch_revenue_projection_2030(
+                            sorted_gainers,
+                            config.perplexity_api_key,
+                            progress_callback=progress_callback
+                        )
+                        
+                        projection_successful = sum(1 for stock in sorted_gainers if stock.get('revenue_projection_2030'))
+                        print(f"✓ Revenue projections fetched ({projection_successful}/{len(sorted_gainers)} companies)")
+                        
+                        # Filter by 2030 projection (minimum 10% growth)
+                        print("\nFiltering by 2030 growth projection (minimum 10% per year)...")
+                        before_2030 = len(sorted_gainers)
+                        sorted_gainers = api_client.filter_by_2030_projection(sorted_gainers, min_growth=10.0)
+                        after_2030 = len(sorted_gainers)
+                        print(f" ({before_2030} → {after_2030} companies with ≥10% projected growth in 2030)")
+                    
+                    # Now fetch remaining data only for companies that passed all filters
                     if sorted_gainers:
                         print("\nFetching remaining company data:")
                         sorted_gainers = api_client.enrich_remaining_data(
