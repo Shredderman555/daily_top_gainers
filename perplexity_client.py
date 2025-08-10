@@ -891,6 +891,71 @@ class PerplexityClient:
         
         return None
     
+    def get_put_call_ratio(self) -> Optional[str]:
+        """Get the latest total put/call ratio from CBOE.
+        
+        Returns:
+            Put/call ratio as a string or None if error
+        """
+        prompt = "What is the latest TOTAL put/call ratio from the SUMMARY section at the top of https://www.cboe.com/us/options/market_statistics/daily/? Only give the final daily summary TOTAL put/call ratio as a numerical value. No other text"
+        
+        try:
+            logger.debug("Requesting put/call ratio from CBOE")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 20
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract ratio from response
+            if 'choices' in data and len(data['choices']) > 0:
+                ratio_text = data['choices'][0]['message']['content'].strip()
+                # Remove any citation markers
+                import re
+                ratio_text = re.sub(r'\[\d+\]|\[\d*$', '', ratio_text).strip()
+                
+                # Try to extract numeric value
+                ratio_match = re.search(r'(\d+\.?\d*)', ratio_text)
+                if ratio_match:
+                    ratio_value = ratio_match.group(1)
+                    logger.debug(f"Got put/call ratio: {ratio_value}")
+                    return ratio_value
+                else:
+                    logger.warning(f"Could not parse put/call ratio from '{ratio_text}'")
+                    return None
+            else:
+                logger.warning("No put/call ratio in response")
+                return None
+                
+        except Timeout:
+            logger.warning("Timeout getting put/call ratio")
+            return None
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning("Rate limit hit for put/call ratio")
+            else:
+                logger.error(f"HTTP error getting put/call ratio: {e}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Unexpected error getting put/call ratio: {e}")
+            return None
+    
     def __enter__(self):
         """Context manager entry."""
         return self

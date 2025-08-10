@@ -50,6 +50,16 @@ def main():
             print(f"Fetching detailed company data...")
             test_stock = api.enrich_with_descriptions(test_stock, config.perplexity_api_key)
     
+    # Fetch put/call ratio
+    put_call_ratio = None
+    if config.perplexity_api_key:
+        print("Fetching put/call ratio...")
+        from perplexity_client import PerplexityClient
+        with PerplexityClient(config.perplexity_api_key) as perplexity:
+            put_call_ratio = perplexity.get_put_call_ratio()
+        if put_call_ratio:
+            print(f"Put/Call Ratio: {put_call_ratio}")
+    
     # Send email
     print("Sending email...")
     sender = EmailSender(
@@ -59,7 +69,7 @@ def main():
         config.email_password
     )
     
-    if sender.send_email(config.email_recipient, test_stock):
+    if sender.send_email(config.email_recipient, test_stock, put_call_ratio=put_call_ratio):
         print(f"✓ Email sent successfully for {args.symbol}")
     else:
         print("✗ Failed to send email")

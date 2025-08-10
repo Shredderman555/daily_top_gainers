@@ -50,7 +50,7 @@ class EmailSender:
         else:
             return f"${market_cap:,.0f}"
     
-    def create_email_html(self, stocks: List[Dict[str, Any]]) -> str:
+    def create_email_html(self, stocks: List[Dict[str, Any]], put_call_ratio: Optional[str] = None) -> str:
         """Create HTML content for the email.
         
         Args:
@@ -60,19 +60,52 @@ class EmailSender:
             HTML string for email body
         """
         if not stocks:
-            return """
+            # Format put/call ratio section for no gainers
+            put_call_section = ""
+            if put_call_ratio:
+                try:
+                    ratio_float = float(put_call_ratio)
+                    if ratio_float > 1.0:
+                        color = "#cc0000"
+                        sentiment = "Bearish"
+                    elif ratio_float < 1.0:
+                        color = "#00aa00"
+                        sentiment = "Bullish"
+                    else:
+                        color = "#666666"
+                        sentiment = "Neutral"
+                    
+                    put_call_section = f"""
+                        <div style="background-color: #f5f5f5; border-radius: 8px; padding: 12px 20px; margin-bottom: 30px; text-align: center;">
+                            <span style="color: #666; font-size: 14px; font-weight: 500;">Market Sentiment</span>
+                            <span style="margin: 0 10px; color: #ccc;">|</span>
+                            <span style="color: #333; font-size: 14px;">Put/Call Ratio: </span>
+                            <span style="color: {color}; font-size: 14px; font-weight: 600;">{put_call_ratio}</span>
+                            <span style="color: {color}; font-size: 12px; margin-left: 8px;">({sentiment})</span>
+                        </div>
+                    """
+                except:
+                    put_call_section = f"""
+                        <div style="background-color: #f5f5f5; border-radius: 8px; padding: 12px 20px; margin-bottom: 30px; text-align: center;">
+                            <span style="color: #666; font-size: 14px; font-weight: 500;">Market Sentiment</span>
+                            <span style="margin: 0 10px; color: #ccc;">|</span>
+                            <span style="color: #333; font-size: 14px;">Put/Call Ratio: {put_call_ratio}</span>
+                        </div>
+                    """
+            
+            return f"""
             <html>
                 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff;">
                     <div style="max-width: 700px; margin: 0 auto; padding: 40px 20px;">
-                        <h1 style="color: #000; text-align: center; font-weight: 600;">Stock Alert: No 10%+ Gainers Today</h1>
+                        {put_call_section}
                         <p style="color: #666; text-align: center; font-size: 16px; margin-top: 20px;">No stocks gained 10% or more today.</p>
                         <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px;">
-                            Generated on {date}
+                            Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
                         </p>
                     </div>
                 </body>
             </html>
-            """.format(date=datetime.now().strftime("%B %d, %Y at %I:%M %p"))
+            """
         
         stock_cards = []
         for i, stock in enumerate(stocks):
@@ -312,11 +345,46 @@ class EmailSender:
                 </div>
             """)
         
+        # Format put/call ratio section
+        put_call_section = ""
+        if put_call_ratio:
+            try:
+                ratio_float = float(put_call_ratio)
+                # Color code based on ratio (>1 = bearish/red, <1 = bullish/green)
+                if ratio_float > 1.0:
+                    color = "#cc0000"
+                    sentiment = "Bearish"
+                elif ratio_float < 1.0:
+                    color = "#00aa00"
+                    sentiment = "Bullish"
+                else:
+                    color = "#666666"
+                    sentiment = "Neutral"
+                
+                put_call_section = f"""
+                    <div style="background-color: #f5f5f5; border-radius: 8px; padding: 12px 20px; margin-bottom: 30px; text-align: center;">
+                        <span style="color: #666; font-size: 14px; font-weight: 500;">Market Sentiment</span>
+                        <span style="margin: 0 10px; color: #ccc;">|</span>
+                        <span style="color: #333; font-size: 14px;">Put/Call Ratio: </span>
+                        <span style="color: {color}; font-size: 14px; font-weight: 600;">{put_call_ratio}</span>
+                        <span style="color: {color}; font-size: 12px; margin-left: 8px;">({sentiment})</span>
+                    </div>
+                """
+            except:
+                # If we can't parse the ratio, just show it without color coding
+                put_call_section = f"""
+                    <div style="background-color: #f5f5f5; border-radius: 8px; padding: 12px 20px; margin-bottom: 30px; text-align: center;">
+                        <span style="color: #666; font-size: 14px; font-weight: 500;">Market Sentiment</span>
+                        <span style="margin: 0 10px; color: #ccc;">|</span>
+                        <span style="color: #333; font-size: 14px;">Put/Call Ratio: {put_call_ratio}</span>
+                    </div>
+                """
+        
         html = f"""
         <html>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #ffffff;">
                 <div style="max-width: 700px; margin: 0 auto; padding: 40px 20px;">
-                    <h1 style="color: #000; text-align: center; margin-bottom: 40px; font-weight: 600;">Stock Alert: {len(stocks)} Stocks Gained 10%+ Today</h1>
+                    {put_call_section}
                     
                     <!-- Stock cards -->
                     {''.join(stock_cards)}
@@ -332,7 +400,7 @@ class EmailSender:
         return html
     
     def send_email(self, recipient: str, stocks: List[Dict[str, Any]], 
-                   dry_run: bool = False) -> bool:
+                   dry_run: bool = False, put_call_ratio: Optional[str] = None) -> bool:
         """Send stock alert email.
         
         Args:
@@ -356,7 +424,7 @@ class EmailSender:
                 msg['Subject'] = "Stock Alert: No 10%+ gainers today"
             
             # Create HTML content
-            html_content = self.create_email_html(stocks)
+            html_content = self.create_email_html(stocks, put_call_ratio)
             html_part = MIMEText(html_content, 'html')
             msg.attach(html_part)
             

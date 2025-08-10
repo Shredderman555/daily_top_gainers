@@ -241,6 +241,18 @@ def main() -> None:
             
             # Send email if --test flag is set or if it's a regular run
             if args.test or not args.dry_run:
+                # Fetch put/call ratio
+                put_call_ratio = None
+                if config.perplexity_api_key:
+                    print("\n✓ Fetching market sentiment (put/call ratio)...", end="", flush=True)
+                    from perplexity_client import PerplexityClient
+                    with PerplexityClient(config.perplexity_api_key) as perplexity:
+                        put_call_ratio = perplexity.get_put_call_ratio()
+                    if put_call_ratio:
+                        print(f" {put_call_ratio}")
+                    else:
+                        print(" N/A")
+                
                 email_sender = EmailSender(
                     smtp_server=config.smtp_server,
                     smtp_port=config.smtp_port,
@@ -253,7 +265,8 @@ def main() -> None:
                 success = email_sender.send_email(
                     recipient=config.email_recipient,
                     stocks=sorted_gainers,
-                    dry_run=args.dry_run
+                    dry_run=args.dry_run,
+                    put_call_ratio=put_call_ratio
                 )
                 
                 if success:
