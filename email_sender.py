@@ -148,6 +148,15 @@ class EmailSender:
             long_term_debt = stock.get('long_term_debt', None)
             cash_and_equivalents = stock.get('cash_and_equivalents', None)
             
+            # Get consensus price target history
+            pt_consensus_current = stock.get('pt_consensus_current', None)
+            pt_consensus_7d = stock.get('pt_consensus_7d', None)
+            pt_consensus_30d = stock.get('pt_consensus_30d', None)
+            pt_consensus_180d = stock.get('pt_consensus_180d', None)
+            pt_change_7d = stock.get('pt_change_7d', None)
+            pt_change_30d = stock.get('pt_change_30d', None)
+            pt_change_180d = stock.get('pt_change_180d', None)
+            
             # Format financial values
             def format_margin(margin):
                 if margin is not None:
@@ -164,6 +173,12 @@ class EmailSender:
                         return f"${value / 1_000_000:.1f}M"
                     else:
                         return f"${value:,.0f}"
+                return "N/A"
+            
+            def format_pt_with_change(current, historical, change):
+                """Format price target with change."""
+                if historical is not None:
+                    return f"${historical:.0f}"
                 return "N/A"
             
             # Format scores
@@ -225,6 +240,20 @@ class EmailSender:
                                 <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_billions(cash_and_equivalents)}</td>
                                 <td style="padding: 6px 0; color: #666; font-size: 14px;">Net Margin:</td>
                                 <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_margin(net_income_margin)}</td>
+                            </tr>
+                            <!-- Fifth row - Price Target Consensus History (7d, 30d) -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT Now:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{f"${pt_consensus_current:.0f}" if pt_consensus_current else "N/A"}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 7d:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_7d, pt_change_7d)}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 30d:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_30d, pt_change_30d)}</td>
+                            </tr>
+                            <!-- Sixth row - Price Target 180d -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 180d:</td>
+                                <td colspan="5" style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_180d, pt_change_180d)}</td>
                             </tr>
                         </table>
                     </div>

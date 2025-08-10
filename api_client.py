@@ -742,6 +742,16 @@ class FMPAPIClient:
                     stock['long_term_debt'] = financial_metrics['long_term_debt']
                     stock['cash_and_equivalents'] = financial_metrics['cash_and_equivalents']
                     
+                    # Fetch consensus price target history
+                    consensus_data = self.fetch_consensus_price_targets(symbol)
+                    stock['pt_consensus_current'] = consensus_data['pt_consensus_current']
+                    stock['pt_consensus_7d'] = consensus_data['pt_consensus_7d']
+                    stock['pt_consensus_30d'] = consensus_data['pt_consensus_30d']
+                    stock['pt_consensus_180d'] = consensus_data['pt_consensus_180d']
+                    stock['pt_change_7d'] = consensus_data['pt_change_7d']
+                    stock['pt_change_30d'] = consensus_data['pt_change_30d']
+                    stock['pt_change_180d'] = consensus_data['pt_change_180d']
+                    
                     if progress_callback:
                         progress_callback(company_name, True, "financial_metrics")
             
@@ -861,6 +871,16 @@ class FMPAPIClient:
                     stock['long_term_debt'] = financial_metrics['long_term_debt']
                     stock['cash_and_equivalents'] = financial_metrics['cash_and_equivalents']
                     
+                    # Fetch consensus price target history
+                    consensus_data = self.fetch_consensus_price_targets(symbol)
+                    stock['pt_consensus_current'] = consensus_data['pt_consensus_current']
+                    stock['pt_consensus_7d'] = consensus_data['pt_consensus_7d']
+                    stock['pt_consensus_30d'] = consensus_data['pt_consensus_30d']
+                    stock['pt_consensus_180d'] = consensus_data['pt_consensus_180d']
+                    stock['pt_change_7d'] = consensus_data['pt_change_7d']
+                    stock['pt_change_30d'] = consensus_data['pt_change_30d']
+                    stock['pt_change_180d'] = consensus_data['pt_change_180d']
+                    
                     if progress_callback:
                         progress_callback(company_name, True, "financial_metrics")
             
@@ -872,6 +892,131 @@ class FMPAPIClient:
             logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
         
         return stocks
+    
+    def fetch_consensus_price_targets(self, symbol: str) -> Dict[str, Any]:
+        """Fetch consensus price targets: current and historical (7d, 30d, 180d ago).
+        
+        Args:
+            symbol: Stock ticker symbol
+            
+        Returns:
+            Dictionary with consensus targets and changes
+        """
+        try:
+            from datetime import datetime, timedelta
+            
+            # Get current consensus from dedicated endpoint
+            consensus_url = f"https://financialmodelingprep.com/api/v4/price-target-consensus?symbol={symbol}&apikey={self.api_key}"
+            consensus_response = self.session.get(consensus_url, timeout=10)
+            
+            current_consensus = None
+            if consensus_response.status_code == 200:
+                consensus_data = consensus_response.json()
+                if consensus_data and isinstance(consensus_data, list) and len(consensus_data) > 0:
+                    current_consensus = consensus_data[0].get('targetConsensus', None)
+            
+            # Get historical price targets to calculate past consensus
+            targets_url = f"https://financialmodelingprep.com/api/v4/price-target?symbol={symbol}&apikey={self.api_key}"
+            targets_response = self.session.get(targets_url, timeout=10)
+            
+            if targets_response.status_code != 200:
+                logger.warning(f"Failed to fetch price target history for {symbol}")
+                return {
+                    'pt_consensus_current': current_consensus,
+                    'pt_consensus_7d': None,
+                    'pt_consensus_30d': None,
+                    'pt_consensus_180d': None,
+                    'pt_change_7d': None,
+                    'pt_change_30d': None,
+                    'pt_change_180d': None
+                }
+            
+            data = targets_response.json()
+            if not data or not isinstance(data, list):
+                return {
+                    'pt_consensus_current': current_consensus,
+                    'pt_consensus_7d': None,
+                    'pt_consensus_30d': None,
+                    'pt_consensus_180d': None,
+                    'pt_change_7d': None,
+                    'pt_change_30d': None,
+                    'pt_change_180d': None
+                }
+            
+            # Define time points
+            now = datetime.now()
+            week_ago = now - timedelta(days=7)
+            month_ago = now - timedelta(days=30)
+            six_months_ago = now - timedelta(days=180)
+            
+            def get_consensus_at_date(cutoff_date):
+                """Calculate consensus by taking most recent target from each analyst before cutoff."""
+                analyst_targets = {}
+                
+                for item in data:
+                    date_str = item.get('publishedDate', '')
+                    if 'T' in date_str:
+                        try:
+                            date = datetime.fromisoformat(date_str.replace('Z', '+00:00').replace('.000+00:00', ''))
+                            date = date.replace(tzinfo=None)
+                            
+                            if date <= cutoff_date:
+                                analyst = item.get('analystCompany', 'Unknown')
+                                target = item.get('priceTarget', 0)
+                                
+                                # Keep most recent target for each analyst before cutoff
+                                if analyst not in analyst_targets or date > analyst_targets[analyst]['date']:
+                                    analyst_targets[analyst] = {'target': target, 'date': date}
+                        except:
+                            continue
+                
+                if analyst_targets:
+                    targets = [v['target'] for v in analyst_targets.values()]
+                    return sum(targets) / len(targets)
+                return None
+            
+            # Calculate historical consensus
+            consensus_7d = get_consensus_at_date(week_ago)
+            consensus_30d = get_consensus_at_date(month_ago)
+            consensus_180d = get_consensus_at_date(six_months_ago)
+            
+            # If no current consensus from API, calculate from recent targets
+            if current_consensus is None:
+                current_consensus = get_consensus_at_date(now)
+            
+            # Calculate changes
+            change_7d = None
+            change_30d = None
+            change_180d = None
+            
+            if current_consensus and consensus_7d:
+                change_7d = current_consensus - consensus_7d
+            if current_consensus and consensus_30d:
+                change_30d = current_consensus - consensus_30d
+            if current_consensus and consensus_180d:
+                change_180d = current_consensus - consensus_180d
+            
+            return {
+                'pt_consensus_current': current_consensus,
+                'pt_consensus_7d': consensus_7d,
+                'pt_consensus_30d': consensus_30d,
+                'pt_consensus_180d': consensus_180d,
+                'pt_change_7d': change_7d,
+                'pt_change_30d': change_30d,
+                'pt_change_180d': change_180d
+            }
+            
+        except Exception as e:
+            logger.error(f"Error fetching consensus price targets for {symbol}: {e}")
+            return {
+                'pt_consensus_current': None,
+                'pt_consensus_7d': None,
+                'pt_consensus_30d': None,
+                'pt_consensus_180d': None,
+                'pt_change_7d': None,
+                'pt_change_30d': None,
+                'pt_change_180d': None
+            }
     
     def fetch_financial_metrics(self, symbol: str) -> Dict[str, Any]:
         """Fetch financial metrics for a single stock.
