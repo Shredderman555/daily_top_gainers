@@ -156,6 +156,8 @@ def main() -> None:
                             print(f"  → {company} analyst price targets ✓")
                         elif data_type == "revenue_projection_2030":
                             print(f"  → {company} revenue projection 2030 ✓")
+                        elif data_type == "financial_metrics":
+                            print(f"  → {company} financial metrics ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:

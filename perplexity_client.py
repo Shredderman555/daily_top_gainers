@@ -10,6 +10,35 @@ from requests.exceptions import RequestException, Timeout
 logger = logging.getLogger(__name__)
 
 
+def clean_markdown(text: str) -> str:
+    """Remove markdown formatting from text.
+    
+    Args:
+        text: Text potentially containing markdown
+        
+    Returns:
+        Cleaned text without markdown formatting
+    """
+    if not text:
+        return text
+    
+    import re
+    # Remove bold markdown (**text**)
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+    # Remove bold markdown (__text__)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    # Remove italic markdown (*text*) - single asterisks
+    text = re.sub(r'(?<=[^*])\*([^*]+)\*(?=[^*])', r'\1', text)
+    # Handle italic at start of string
+    text = re.sub(r'^\*([^*]+)\*', r'\1', text)
+    # Remove italic markdown (_text_) - single underscores
+    text = re.sub(r'(?<=[^_])_([^_]+)_(?=[^_])', r'\1', text)
+    # Handle italic at start of string
+    text = re.sub(r'^_([^_]+)_', r'\1', text)
+    
+    return text.strip()
+
+
 class PerplexityClient:
     """Client for interacting with Perplexity API."""
     
@@ -68,6 +97,8 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 description = re.sub(r'\[\d+\]|\[\d*$', '', description).strip()
+                # Clean markdown formatting
+                description = clean_markdown(description)
                 logger.debug(f"Got full response for {company_name}")
                 # Return the full structured response
                 return description
@@ -499,6 +530,8 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 guidance = re.sub(r'\[\d+\]|\[\d*$', '', guidance).strip()
+                # Clean markdown formatting
+                guidance = clean_markdown(guidance)
                 logger.debug(f"Got earnings guidance for {company_name}")
                 return guidance
             else:
@@ -603,6 +636,8 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 price_targets = re.sub(r'\[\d+\]|\[\d*$', '', price_targets).strip()
+                # Clean markdown formatting
+                price_targets = clean_markdown(price_targets)
                 logger.debug(f"Got analyst price targets for {company_name}")
                 return price_targets
             else:
@@ -707,6 +742,8 @@ class PerplexityClient:
                 # Remove citation markers like [1], [2], etc. and any trailing brackets
                 import re
                 projection = re.sub(r'\[\d+\]|\[\d*$', '', projection).strip()
+                # Clean markdown formatting
+                projection = clean_markdown(projection)
                 logger.debug(f"Got revenue projection 2030 for {company_name}")
                 return projection
             else:

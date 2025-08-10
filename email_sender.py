@@ -109,28 +109,21 @@ class EmailSender:
             # Handle missing description
             description_display = description if description else "Description unavailable"
             
-            # Parse growth rates by year
-            growth_table_rows = []
+            # Parse growth rates by year for individual variables
+            growth_25 = "N/A"
+            growth_26 = "N/A"
+            growth_27 = "N/A"
+            
             if growth_rate:
                 # Try to parse format like "2025: 20%, 2026: 21%, 2027: 22%"
                 import re
                 year_pattern = r'(\d{4}):\s*([\d.]+(?:-[\d.]+)?)%'
                 matches = re.findall(year_pattern, growth_rate)
                 if matches:
-                    for year, rate in matches:
-                        growth_table_rows.append(f'<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr {year[-2:]}:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{rate}%</td></tr>')
-                else:
-                    # Fallback for old format
-                    growth_table_rows.append(f'<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev growth:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{growth_rate}</td></tr>')
-            else:
-                growth_table_rows = [
-                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 25:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>',
-                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 26:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>',
-                    '<tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Rev gr 27:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">N/A</td></tr>'
-                ]
-            
-            # Create growth rate table HTML
-            growth_html = f'<table style="border-collapse: collapse; margin: 0;">{"".join(growth_table_rows)}</table>'
+                    growth_dict = {year: rate for year, rate in matches}
+                    growth_25 = f"{growth_dict.get('2025', 'N/A')}%" if growth_dict.get('2025') else "N/A"
+                    growth_26 = f"{growth_dict.get('2026', 'N/A')}%" if growth_dict.get('2026') else "N/A"
+                    growth_27 = f"{growth_dict.get('2027', 'N/A')}%" if growth_dict.get('2027') else "N/A"
             
             # Get competitive and growth analysis data
             competitive_score = stock.get('competitive_score', None)
@@ -146,6 +139,32 @@ class EmailSender:
             
             # Get revenue projection for 2030
             revenue_projection_2030 = stock.get('revenue_projection_2030', None)
+            
+            # Get financial metrics
+            gross_margin = stock.get('gross_margin', None)
+            rd_margin = stock.get('rd_margin', None)
+            ebitda_margin = stock.get('ebitda_margin', None)
+            net_income_margin = stock.get('net_income_margin', None)
+            long_term_debt = stock.get('long_term_debt', None)
+            cash_and_equivalents = stock.get('cash_and_equivalents', None)
+            
+            # Format financial values
+            def format_margin(margin):
+                if margin is not None:
+                    if margin < 0:
+                        return f'<span style="color: #cc0000;">{margin:.1f}%</span>'
+                    return f"{margin:.1f}%"
+                return "N/A"
+            
+            def format_billions(value):
+                if value is not None:
+                    if value >= 1_000_000_000:
+                        return f"${value / 1_000_000_000:.1f}B"
+                    elif value >= 1_000_000:
+                        return f"${value / 1_000_000:.1f}M"
+                    else:
+                        return f"${value:,.0f}"
+                return "N/A"
             
             # Format scores
             competitive_display = f"{competitive_score}/10" if competitive_score is not None else "N/A"
@@ -165,23 +184,49 @@ class EmailSender:
                         {description_display}
                     </p>
                     
-                    <!-- Two column layout -->
-                    <div style="display: table; width: 100%; margin-bottom: 20px;">
-                        <!-- Left column: Growth rates -->
-                        <div style="display: table-cell; vertical-align: top; padding-right: 40px;">
-                            <div style="color: #333; font-size: 16px; line-height: 1.8;">
-                                {growth_html}
-                            </div>
-                        </div>
-                        
-                        <!-- Right column: PS ratio, Market cap, Today's gain -->
-                        <div style="display: table-cell; vertical-align: top; text-align: left;">
-                            <table style="border-collapse: collapse; margin: 0;">
-                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">PS ratio:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{ps_ratio_display}</td></tr>
-                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Mkt cap:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{market_cap_display}</td></tr>
-                                <tr><td style="padding: 4px 24px 4px 0; color: #333; font-size: 16px;">Today's gain:</td><td style="padding: 4px 0; color: #333; font-size: 16px;">{change_display}</td></tr>
-                            </table>
-                        </div>
+                    <!-- Combined Key Metrics Section -->
+                    <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 12px 0; color: #333; font-size: 16px; font-weight: 600;">
+                            Key Metrics
+                        </p>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <!-- First row: Growth rates and valuation -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px; width: 20%;">Rev gr 25:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500; width: 13%;">{growth_25}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px; width: 20%;">PS ratio:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500; width: 13%;">{ps_ratio_display}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px; width: 20%;">Gross Margin:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500; width: 14%;">{format_margin(gross_margin)}</td>
+                            </tr>
+                            <!-- Second row -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Rev gr 26:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{growth_26}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Mkt cap:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{market_cap_display}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">R&D Margin:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_margin(rd_margin)}</td>
+                            </tr>
+                            <!-- Third row -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Rev gr 27:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{growth_27}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Today's gain:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{change_display}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">EBITDA Margin:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_margin(ebitda_margin)}</td>
+                            </tr>
+                            <!-- Fourth row -->
+                            <tr>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Debt:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_billions(long_term_debt)}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Cash:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_billions(cash_and_equivalents)}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">Net Margin:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_margin(net_income_margin)}</td>
+                            </tr>
+                        </table>
                     </div>
                     
                     <!-- Competitive Advantage -->

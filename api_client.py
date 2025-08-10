@@ -730,6 +730,20 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
+                
+                # Fetch financial metrics
+                symbol = stock.get('symbol', '')
+                if symbol:
+                    financial_metrics = self.fetch_financial_metrics(symbol)
+                    stock['gross_margin'] = financial_metrics['gross_margin']
+                    stock['rd_margin'] = financial_metrics['rd_margin']
+                    stock['ebitda_margin'] = financial_metrics['ebitda_margin']
+                    stock['net_income_margin'] = financial_metrics['net_income_margin']
+                    stock['long_term_debt'] = financial_metrics['long_term_debt']
+                    stock['cash_and_equivalents'] = financial_metrics['cash_and_equivalents']
+                    
+                    if progress_callback:
+                        progress_callback(company_name, True, "financial_metrics")
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
@@ -834,6 +848,21 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
+                stock['revenue_projection_2030'] = revenue_projections_2030.get(company_name, None)
+                
+                # Fetch financial metrics
+                symbol = stock.get('symbol', '')
+                if symbol:
+                    financial_metrics = self.fetch_financial_metrics(symbol)
+                    stock['gross_margin'] = financial_metrics['gross_margin']
+                    stock['rd_margin'] = financial_metrics['rd_margin']
+                    stock['ebitda_margin'] = financial_metrics['ebitda_margin']
+                    stock['net_income_margin'] = financial_metrics['net_income_margin']
+                    stock['long_term_debt'] = financial_metrics['long_term_debt']
+                    stock['cash_and_equivalents'] = financial_metrics['cash_and_equivalents']
+                    
+                    if progress_callback:
+                        progress_callback(company_name, True, "financial_metrics")
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched growth rates for {growth_successful}/{len(stocks)} companies")
@@ -843,6 +872,72 @@ class FMPAPIClient:
             logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
         
         return stocks
+    
+    def fetch_financial_metrics(self, symbol: str) -> Dict[str, Any]:
+        """Fetch financial metrics for a single stock.
+        
+        Args:
+            symbol: Stock ticker symbol
+            
+        Returns:
+            Dictionary with financial metrics
+        """
+        metrics = {
+            'gross_margin': None,
+            'rd_margin': None,
+            'ebitda_margin': None,
+            'net_income_margin': None,
+            'long_term_debt': None,
+            'cash_and_equivalents': None
+        }
+        
+        try:
+            # Fetch financial ratios (pre-calculated margins)
+            ratios_url = f"{self.BASE_URL}/ratios/{symbol}?limit=1&apikey={self.api_key}"
+            ratios_response = self.session.get(ratios_url, timeout=10)
+            if ratios_response.status_code == 200:
+                ratios_data = ratios_response.json()
+                if ratios_data and len(ratios_data) > 0:
+                    latest_ratios = ratios_data[0]
+                    # Convert decimals to percentages
+                    if latest_ratios.get('grossProfitMargin'):
+                        metrics['gross_margin'] = latest_ratios['grossProfitMargin'] * 100
+                    if latest_ratios.get('netProfitMargin'):
+                        metrics['net_income_margin'] = latest_ratios['netProfitMargin'] * 100
+            
+            # Fetch income statement for R&D and EBITDA margins
+            income_url = f"{self.BASE_URL}/income-statement/{symbol}?limit=1&apikey={self.api_key}"
+            income_response = self.session.get(income_url, timeout=10)
+            if income_response.status_code == 200:
+                income_data = income_response.json()
+                if income_data and len(income_data) > 0:
+                    latest_income = income_data[0]
+                    revenue = latest_income.get('revenue', 0)
+                    if revenue and revenue > 0:
+                        # Calculate R&D margin
+                        rd_expenses = latest_income.get('researchAndDevelopmentExpenses', 0)
+                        if rd_expenses:
+                            metrics['rd_margin'] = (rd_expenses / revenue) * 100
+                        
+                        # Calculate EBITDA margin
+                        ebitda = latest_income.get('ebitda', 0)
+                        if ebitda:
+                            metrics['ebitda_margin'] = (ebitda / revenue) * 100
+            
+            # Fetch balance sheet for debt and cash
+            balance_url = f"{self.BASE_URL}/balance-sheet-statement/{symbol}?limit=1&apikey={self.api_key}"
+            balance_response = self.session.get(balance_url, timeout=10)
+            if balance_response.status_code == 200:
+                balance_data = balance_response.json()
+                if balance_data and len(balance_data) > 0:
+                    latest_balance = balance_data[0]
+                    metrics['long_term_debt'] = latest_balance.get('longTermDebt', None)
+                    metrics['cash_and_equivalents'] = latest_balance.get('cashAndCashEquivalents', None)
+                    
+        except Exception as e:
+            logger.warning(f"Error fetching financial metrics for {symbol}: {e}")
+        
+        return metrics
     
     def __enter__(self):
         """Context manager entry."""
