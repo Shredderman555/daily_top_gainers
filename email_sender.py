@@ -258,6 +258,14 @@ class EmailSender:
                         </table>
                     </div>
                     
+                    <!-- Revenue Growth Projection for 2030 -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Revenue Growth Projection for 2030
+                    </p>
+                    <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {revenue_projection_2030 if revenue_projection_2030 else "Revenue growth projection analysis not available"}
+                    </p>
+                    
                     <!-- Competitive Advantage -->
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Competitive Advantage: {competitive_display}
@@ -286,16 +294,8 @@ class EmailSender:
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Analyst Price Target Changes
                     </p>
-                    <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                        {analyst_price_targets if analyst_price_targets else "No recent analyst price target changes available"}
-                    </p>
-                    
-                    <!-- Revenue Growth Projection for 2030 -->
-                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
-                        Revenue Growth Projection for 2030
-                    </p>
                     <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                        {revenue_projection_2030 if revenue_projection_2030 else "Revenue growth projection analysis not available"}
+                        {analyst_price_targets if analyst_price_targets else "No recent analyst price target changes available"}
                     </p>
                     
                     <!-- Deep Research Button -->
