@@ -595,7 +595,14 @@ class FMPAPIClient:
                 delay=1.5
             )
             
-            # Add descriptions, P/S ratios, earnings guidance, and analyst price targets to stock data
+            # Fetch revenue projections for 2030
+            revenue_projections_2030, projections_successful = client.get_revenue_projection_2030_batch(
+                company_names, 
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add descriptions, P/S ratios, earnings guidance, analyst price targets, and revenue projections to stock data
             for stock, company_name in zip(stocks, company_names):
                 # Parse the structured description response
                 full_description = descriptions.get(company_name, None)
@@ -616,11 +623,13 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
+                stock['revenue_projection_2030'] = revenue_projections_2030.get(company_name, None)
             
             logger.info(f"Successfully fetched descriptions for {desc_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched analyst price targets for {price_targets_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched revenue projections 2030 for {projections_successful}/{len(stocks)} companies")
         
         return stocks
     

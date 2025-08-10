@@ -668,6 +668,110 @@ class PerplexityClient:
         logger.info(f"Successfully fetched analyst price targets for {successful}/{len(company_names)} companies")
         return results, successful
     
+    def get_revenue_projection_2030(self, company_name: str) -> Optional[str]:
+        """Get revenue growth projection for 2030.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            Revenue projection analysis or None if error
+        """
+        prompt = f"Think really hard and tell me how fast you think {company_name} will still be growing revenue in 2030? Take into account competitive advantages, how fast the industry in growing, the potential for new product/service lines, stickiness of existing customers, etc. Structure your response as follows: [percentage revenue growth rate] [reasoning]. Critical: keep your response to 100 words or less."
+        
+        try:
+            logger.debug(f"Requesting revenue projection 2030 for {company_name}")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 200
+                },
+                timeout=10
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract projection from response
+            if 'choices' in data and len(data['choices']) > 0:
+                projection = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers like [1], [2], etc. and any trailing brackets
+                import re
+                projection = re.sub(r'\[\d+\]|\[\d*$', '', projection).strip()
+                logger.debug(f"Got revenue projection 2030 for {company_name}")
+                return projection
+            else:
+                logger.warning(f"No revenue projection 2030 in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout getting revenue projection 2030 for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error getting revenue projection 2030 for {company_name}: {e}")
+            raise RequestException(str(e))
+    
+    def get_revenue_projection_2030_batch(self, company_names: list, 
+                                          progress_callback: Optional[Callable] = None,
+                                          delay: float = 0.5) -> dict:
+        """Get revenue projections for 2030 for multiple companies with rate limiting.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to revenue projections
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                projection = self.get_revenue_projection_2030(company)
+                results[company] = projection
+                if projection is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "revenue_projection_2030")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to get revenue projection 2030 for {company}: {error_msg}")
+        
+        logger.info(f"Successfully fetched revenue projections 2030 for {successful}/{len(company_names)} companies")
+        return results, successful
+    
     def __enter__(self):
         """Context manager entry."""
         return self
