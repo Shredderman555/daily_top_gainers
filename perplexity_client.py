@@ -85,7 +85,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 200
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -151,7 +151,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 50
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -255,7 +255,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 20
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -406,7 +406,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 10
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -518,7 +518,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 300
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -624,7 +624,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 300
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -730,7 +730,7 @@ class PerplexityClient:
                     "temperature": 0.1,
                     "max_tokens": 200
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
@@ -993,7 +993,7 @@ Companies scoring 15+ are rare - they represent the intersection of innovation, 
                     "temperature": 0.1,
                     "max_tokens": 2000
                 },
-                timeout=60
+                timeout=200
             )
             
             response.raise_for_status()
@@ -1178,7 +1178,7 @@ Companies scoring 15+ are rare - they represent the intersection of innovation, 
                     "temperature": 0.1,
                     "max_tokens": 20
                 },
-                timeout=10
+                timeout=20
             )
             
             response.raise_for_status()
