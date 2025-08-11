@@ -809,6 +809,269 @@ class PerplexityClient:
         logger.info(f"Successfully fetched revenue projections 2030 for {successful}/{len(company_names)} companies")
         return results, successful
     
+    def get_investment_evaluation(self, company_name: str) -> Optional[str]:
+        """Get comprehensive investment evaluation using the 20-point framework.
+        
+        Args:
+            company_name: Name of the company
+            
+        Returns:
+            Investment evaluation with scores and analysis or None if error
+        """
+        prompt = f"""Complete Investment Evaluation Framework for {company_name}
+
+Evaluate {company_name} on these criteria:
+
+Part A: Technical Excellence (0-8 points)
+1. Fundamental Technical Innovation (0-2 points)
+
+Are they inventing new algorithms, materials, or methods vs. integrating existing ones?
+Would world-class engineers with unlimited funding still need 3+ years to replicate?
+Have they solved problems previously thought intractable?
+Do they have breakthrough IP that's defendable?
+
+Score 0-2: (0=using existing tech, 1=incremental innovation, 2=breakthrough innovation)
+2. Technical Complexity & Barriers (0-2 points)
+
+Does replication require rare expertise, massive datasets, or specialized infrastructure?
+Are there compounding technical advantages that grow over time?
+Would a competitor need to solve multiple hard problems in sequence?
+Is the technical challenge in the implementation details that take years to perfect?
+
+Score 0-2: (0=straightforward, 1=complex but doable, 2=extremely difficult to replicate)
+3. Technical Risk & Systems Mastery (0-2 points)
+
+Are they attempting something with genuine technical risk?
+Do they excel at making complex systems work at unprecedented scale?
+Do they require mastery across multiple technical domains?
+Are they 5-10 years ahead of competitors technically?
+
+Score 0-2: (0=proven approach, 1=moderate innovation, 2=pushing limits of possible)
+4. Irreplaceable Technical Assets (0-2 points)
+
+Do they have technical assets (team, data, infrastructure) that money alone can't buy?
+Have they accumulated technical advantages that compound?
+Do the world's best engineers specifically want to work there?
+Would losing their key technical resources be company-ending?
+
+Score 0-2: (0=replaceable, 1=strong assets, 2=irreplaceable advantages)
+Part B: Business Power (0-12 points)
+5. Revenue Quality & Durability (0-2 points)
+
+Does the product become mission-critical and embedded?
+Do they have 120%+ net revenue retention (land-and-expand)?
+Are contracts multi-year with 90%+ gross renewal rates?
+Are switching costs measured in years and millions of dollars?
+
+Score 0-2: (0=high churn, 1=solid retention, 2=deeply embedded/expanding)
+6. Market Position & Competitive Dynamics (0-2 points)
+
+Are they the default choice or heading there?
+Do they have winner-take-most dynamics?
+Is their competitive lead widening?
+Would customers panic if they disappeared tomorrow?
+
+Score 0-2: (0=weak position, 1=solid competitor, 2=dominant/irreplaceable)
+7. Growth & Profitability Runway (0-4 points) 🔴 DOUBLE WEIGHT
+Evaluate total value creation potential (revenue growth × margin expansion × duration):
+
+4 points: 20x+ potential over next decade
+
+Rule of 80+ (Growth % + FCF Margin %), OR
+50%+ growth sustainable for 7+ years with path to profitability, OR
+Creating entirely new markets with massive TAM expansion
+Examples: Nvidia (Rule of 155), early Tesla, SpaceX
+
+
+3 points: 10-20x potential
+
+Rule of 60+ sustained for multiple years, OR
+30-40% growth for 7+ years with margin expansion
+Multiple untapped growth vectors
+Examples: Palantir, Databricks
+
+
+2 points: 5-10x potential
+
+Rule of 40-60, OR
+25-30% growth for 5 years with stable margins
+Clear path but eventually saturates
+
+
+1 point: 3-5x potential
+
+Rule of 30-40
+15-25% growth OR profitable but slow growth
+
+
+0 points: <3x potential
+
+Rule of <30
+Low growth AND low margins
+
+
+
+8. Capital Efficiency & Cash Generation (0-2 points)
+
+Can they self-fund growth or need constant capital raises?
+Do they have or have clear path to 20%+ FCF margins?
+Does each dollar invested yield >$3 in enterprise value?
+Can they grow revenue faster than OpEx?
+
+Score 0-2: (0=perpetual capital needs, 1=path to self-funding, 2=cash generation machine)
+9. Valuation Reality (0-2 points with possible -2 penalty)
+
+2 points: Exceptional value (e.g., <10x sales for 20%+ growth, <20x for 40%+ growth)
+1 point: Fair value (e.g., 10-20x for 20-30% growth, 20-40x for 40-60% growth)
+0 points: Expensive but justifiable (e.g., 40-60x for 60%+ growth with profitability)
+-1 point: Overvalued (e.g., 60-100x sales, or >2x growth rate multiple)
+-2 points: Uninvestable price (e.g., >100x sales or >3x growth rate multiple)
+
+
+Total Score: X/20
+Scoring Guide:
+
+18-20: Generational investment - exceptional company at great price - Back up the truck
+15-17: Strong buy - quality and value aligned - Build full position
+12-14: Buy - good opportunity - Start accumulating
+10-11: Watch list - interesting but wait for better entry - Wait for pullback
+8-9: Pass - either weak fundamentals or too expensive - Look elsewhere
+<8: Avoid - poor investment regardless of story - Hard pass
+
+
+Quick Screening Questions (for rapid evaluation):
+
+Technical Test: Could 10 world-class engineers replicate this in 6 months with unlimited funding? (If yes → likely not a fit)
+Business Test: Will this company achieve Rule of 40+ while growing? (If no → be cautious)
+10x Test: Can this company be 10x larger in 10 years? (If no → limited upside)
+Moat Test: What would have to happen for this company to become irrelevant? (If easy → weak moat)
+Price Test: Is valuation less than 2x the growth rate? (If no → very expensive)
+
+
+Critical Elements to Also Consider (Not Scored):
+🚩 Red Flags:
+
+Customer concentration >30%
+Founder/CEO departed recently
+Declining win rates or elongating sales cycles
+Key competitors gaining ground rapidly
+Regulatory risks that could destroy the business
+Technological disruption risk (their tech becoming obsolete)
+
+✅ Green Flags:
+
+Founder-led with high insider ownership
+Accelerating organic growth
+Expanding TAM faster than revenue growth
+Network effects getting stronger
+Government/regulatory tailwinds
+
+
+Provide brief reasoning for each score and identify which of the reference companies (Rocket Lab, Nvidia, Anduril, Palantir, Databricks, Glean) they most resemble.
+Remember: The best investments combine:
+
+Hard technical problems that take years to solve
+Products that become mission-critical infrastructure
+Massive growth runways with expanding profitability
+Reasonable valuations relative to opportunity
+
+Companies scoring 15+ are rare - they represent the intersection of innovation, execution, market timing, and valuation that create multi-baggers."""
+        
+        try:
+            logger.debug(f"Requesting investment evaluation for {company_name}")
+            
+            response = self.session.post(
+                f"{self.BASE_URL}/chat/completions",
+                json={
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 2000
+                },
+                timeout=60
+            )
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract evaluation from response
+            if 'choices' in data and len(data['choices']) > 0:
+                evaluation = data['choices'][0]['message']['content'].strip()
+                # Remove citation markers
+                import re
+                evaluation = re.sub(r'\[\d+\]|\[\d*$', '', evaluation).strip()
+                # Clean markdown formatting
+                evaluation = clean_markdown(evaluation)
+                logger.debug(f"Got investment evaluation for {company_name}")
+                return evaluation
+            else:
+                logger.warning(f"No investment evaluation in response for {company_name}")
+                return None
+                
+        except Timeout:
+            logger.warning(f"Timeout getting investment evaluation for {company_name}")
+            raise RequestException("timeout")
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {company_name}")
+                raise RequestException("rate limit")
+            else:
+                logger.error(f"HTTP error for {company_name}: {e}")
+                if e.response.text:
+                    logger.error(f"Response body: {e.response.text}")
+                raise RequestException(f"HTTP {e.response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Unexpected error getting investment evaluation for {company_name}: {e}")
+            raise RequestException(str(e))
+    
+    def get_investment_evaluation_batch(self, company_names: list, 
+                                        progress_callback: Optional[Callable] = None,
+                                        delay: float = 0.5) -> dict:
+        """Get investment evaluations for multiple companies with rate limiting.
+        
+        Args:
+            company_names: List of company names
+            progress_callback: Optional callback for progress updates
+            delay: Delay between requests in seconds
+            
+        Returns:
+            Dictionary mapping company names to investment evaluations
+        """
+        results = {}
+        successful = 0
+        
+        for i, company in enumerate(company_names):
+            if i > 0:
+                time.sleep(delay)  # Rate limiting
+            
+            try:
+                evaluation = self.get_investment_evaluation(company)
+                results[company] = evaluation
+                if evaluation is not None:
+                    successful += 1
+                    if progress_callback:
+                        progress_callback(company, True, "investment_evaluation")
+                else:
+                    if progress_callback:
+                        progress_callback(company, False, "No data returned")
+                    
+            except RequestException as e:
+                results[company] = None
+                error_msg = str(e)
+                if progress_callback:
+                    progress_callback(company, False, error_msg)
+                logger.warning(f"Failed to get investment evaluation for {company}: {error_msg}")
+        
+        logger.info(f"Successfully fetched investment evaluations for {successful}/{len(company_names)} companies")
+        return results, successful
+    
     def __enter__(self):
         """Context manager entry."""
         return self

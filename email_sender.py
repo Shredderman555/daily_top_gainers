@@ -29,6 +29,163 @@ class EmailSender:
         self.sender_email = sender_email
         self.sender_password = sender_password
     
+    def format_investment_evaluation_html(self, eval_data: Dict[str, Any]) -> str:
+        """Format investment evaluation data as HTML.
+        
+        Args:
+            eval_data: Parsed evaluation data
+            
+        Returns:
+            HTML string for investment evaluation section
+        """
+        if not eval_data or 'total_score' not in eval_data:
+            return ""
+        
+        # Determine color based on category
+        category = eval_data.get('category', '').lower()
+        if 'generational' in category:
+            color = '#00aa00'
+            badge_bg = '#e6ffe6'
+        elif 'strong buy' in category:
+            color = '#008800'
+            badge_bg = '#e6ffe6'
+        elif 'buy' in category and 'strong' not in category:
+            color = '#006600'
+            badge_bg = '#f0fff0'
+        elif 'watch' in category:
+            color = '#ff8800'
+            badge_bg = '#fff4e6'
+        elif 'pass' in category:
+            color = '#cc0000'
+            badge_bg = '#ffe6e6'
+        elif 'avoid' in category:
+            color = '#880000'
+            badge_bg = '#ffcccc'
+        else:
+            color = '#666666'
+            badge_bg = '#f5f5f5'
+        
+        score = eval_data.get('total_score', 0)
+        category_text = eval_data.get('category', 'Not Evaluated')
+        comparison = eval_data.get('comparison', '')
+        reasoning = eval_data.get('key_reasoning', '')
+        
+        # Build HTML - simplified to show only the score
+        html = f"""
+        <!-- Investment Evaluation -->
+        <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px; border: 2px solid {color};">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <p style="margin: 0; color: #333; font-size: 18px; font-weight: 700;">
+                    Investment Evaluation
+                </p>
+                <span style="background-color: {badge_bg}; color: {color}; padding: 6px 12px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    {score}/20
+                </span>
+            </div>
+        </div>"""
+        
+        # Add the full evaluation text if available
+        full_text = eval_data.get('full_text', '')
+        if full_text:
+            html += f"""
+            <!-- Detailed Investment Analysis -->
+            <p style="margin: 20px 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                Detailed Investment Analysis
+            </p>
+            <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5; white-space: pre-wrap;">
+{full_text}
+            </p>
+            """
+        
+        return html
+    
+    def parse_investment_evaluation(self, evaluation: Optional[str]) -> Dict[str, Any]:
+        """Parse investment evaluation text into structured data.
+        
+        Args:
+            evaluation: Investment evaluation text from API
+            
+        Returns:
+            Dictionary with parsed evaluation data
+        """
+        if not evaluation:
+            return {}
+        
+        result = {}
+        
+        # Parse total score - look for various patterns
+        import re
+        # Try pattern like "scores 12/20" or "12/20" at the beginning
+        total_match = re.search(r'scores?\s*(\d+)/20', evaluation, re.IGNORECASE)
+        if not total_match:
+            # Try simpler pattern
+            total_match = re.search(r'(\d+)/20', evaluation)
+        if total_match:
+            result['total_score'] = int(total_match.group(1))
+        
+        # Parse category - look for patterns like "(Buy – good opportunity)" within first 500 chars
+        first_part = evaluation[:500]
+        category_match = re.search(r'\(([^)]*(?:Buy|Pass|Watch|Avoid|Generational)[^)]*)\)', first_part, re.IGNORECASE)
+        if category_match:
+            category_text = category_match.group(1)
+            # Clean up category text to extract just the category
+            if '–' in category_text:
+                result['category'] = category_text.split('–')[0].strip()
+            elif '-' in category_text:
+                result['category'] = category_text.split('-')[0].strip()
+            else:
+                result['category'] = category_text.strip()
+        
+        # Parse comparison - look for "resembles" or "similar to"
+        comparison_match = re.search(r'(?:resembles?|similar to)\s+([^.,:]+)', evaluation, re.IGNORECASE)
+        if comparison_match:
+            result['comparison'] = comparison_match.group(1).strip()
+        
+        # Parse key reasoning
+        reasoning_match = re.search(r'KEY REASONING:\s*([^\n]+(?:\n[^\n]+)?)', evaluation)
+        if reasoning_match:
+            result['key_reasoning'] = reasoning_match.group(1).strip()
+        
+        # Parse individual scores
+        scores = {}
+        score_patterns = [
+            (r'Technical Innovation:\s*([-\d]+)', 'tech_innovation'),
+            (r'Technical Complexity:\s*([-\d]+)', 'tech_complexity'),
+            (r'Technical Risk:\s*([-\d]+)', 'tech_risk'),
+            (r'Irreplaceable Assets:\s*([-\d]+)', 'irreplaceable'),
+            (r'Revenue Quality:\s*([-\d]+)', 'revenue_quality'),
+            (r'Unit Economics:\s*([-\d]+)', 'unit_economics'),
+            (r'Growth Runway:\s*([-\d]+)', 'growth_runway'),
+            (r'Market Position:\s*([-\d]+)', 'market_position'),
+            (r'Valuation:\s*([-\d]+)', 'valuation')
+        ]
+        
+        for pattern, key in score_patterns:
+            match = re.search(pattern, evaluation)
+            if match:
+                scores[key] = int(match.group(1))
+        
+        result['scores'] = scores
+        
+        # Parse quick tests
+        tests = {}
+        test_patterns = [
+            (r'Technical Test:\s*.*?(Yes|No)', 'technical_test'),
+            (r'Business Test:\s*.*?(Yes|No|Maybe)', 'business_test'),
+            (r'Growth Test:\s*.*?(Yes|No|Maybe)', 'growth_test'),
+            (r'Moat Test:\s*.*?(Yes|No)', 'moat_test'),
+            (r'Price Test:\s*.*?(Yes|No)', 'price_test')
+        ]
+        
+        for pattern, key in test_patterns:
+            match = re.search(pattern, evaluation, re.IGNORECASE)
+            if match:
+                tests[key] = match.group(1)
+        
+        result['quick_tests'] = tests
+        
+        return result
+    
     def format_market_cap(self, market_cap: Optional[float]) -> str:
         """Format market cap value for display.
         
@@ -172,6 +329,12 @@ class EmailSender:
             
             # Get revenue projection for 2030
             revenue_projection_2030 = stock.get('revenue_projection_2030', None)
+            
+            # Get investment evaluation
+            investment_evaluation = stock.get('investment_evaluation', None)
+            eval_data = self.parse_investment_evaluation(investment_evaluation)
+            # Keep the full evaluation text for display
+            eval_data['full_text'] = investment_evaluation
             
             # Get financial metrics
             gross_margin = stock.get('gross_margin', None)
@@ -330,6 +493,8 @@ class EmailSender:
                     <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {analyst_price_targets if analyst_price_targets else "No recent analyst price target changes available"}
                     </p>
+                    
+                    {self.format_investment_evaluation_html(eval_data)}
                     
                     <!-- Deep Research Button -->
                     <div style="text-align: center; margin-top: 24px;">
