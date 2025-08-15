@@ -282,6 +282,162 @@ class EmailSender:
             </div>
         """
     
+    def format_investment_evaluation(self, text: Optional[str]) -> str:
+        """Format investment evaluation text into structured HTML.
+        
+        Parses AI-generated text to detect patterns like markdown headers, bullet points, 
+        scores, sections, and formats them into readable HTML.
+        
+        Args:
+            text: Raw investment evaluation text
+            
+        Returns:
+            Formatted HTML string
+        """
+        if not text:
+            return "Investment evaluation analysis not available"
+        
+        import re
+        
+        lines = text.split('\n')
+        html_parts = []
+        in_list = False
+        
+        for line in lines:
+            original_line = line
+            line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                continue
+            
+            # Skip separator lines (just dashes)
+            if line == '--' or line == '---':
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                # Add a subtle separator
+                html_parts.append('<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 12px 0;">')
+                continue
+            
+            # Check for markdown headers (###, ##, #)
+            if line.startswith('###'):
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                header_text = line.replace('###', '').strip()
+                html_parts.append(f'<p style="margin: 16px 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">{header_text}</p>')
+                continue
+            elif line.startswith('##'):
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                header_text = line.replace('##', '').strip()
+                html_parts.append(f'<p style="margin: 16px 0 8px 0; color: #333; font-size: 17px; font-weight: 600;">{header_text}</p>')
+                continue
+            elif line.startswith('#'):
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                header_text = line.replace('#', '').strip()
+                html_parts.append(f'<p style="margin: 16px 0 8px 0; color: #333; font-size: 18px; font-weight: 600;">{header_text}</p>')
+                continue
+            
+            # Check for Total Score pattern
+            if 'Total Score:' in line:
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                # Extract and highlight the score
+                score_match = re.search(r'(\d+(?:\.\d+)?)/(\d+)', line)
+                if score_match:
+                    score_num = float(score_match.group(1))
+                    score_denom = float(score_match.group(2))
+                    score_pct = (score_num / score_denom) * 100 if score_denom > 0 else 0
+                    
+                    # Color based on score percentage
+                    if score_pct >= 70:
+                        color = '#4CAF50'  # Green
+                    elif score_pct >= 50:
+                        color = '#FF9800'  # Orange
+                    else:
+                        color = '#f44336'  # Red
+                    
+                    html_parts.append(f'<p style="margin: 16px 0 12px 0; padding: 12px; background-color: #f8f9fa; border-radius: 6px; color: #333; font-size: 16px; font-weight: 600;">Total Score: <span style="color: {color}; font-size: 18px;">{score_match.group(1)}/{score_match.group(2)}</span></p>')
+                else:
+                    html_parts.append(f'<p style="margin: 12px 0 8px 0; color: #333; font-size: 15px; font-weight: 600;">{line}</p>')
+                continue
+            
+            # Check for section headers with scores (lines with "Score:" pattern)
+            if ':' in line and ('Score' in line or 'score' in line) and '(' in line:
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                # Extract score if present
+                score_match = re.search(r'\(.*?(\d+(?:\.\d+)?)[/-](\d+).*?\)', line)
+                if score_match:
+                    section_text = line.split('(')[0].strip().rstrip(':')
+                    score = f"{score_match.group(1)}/{score_match.group(2)}"
+                    html_parts.append(f'<p style="margin: 12px 0 8px 0; color: #333; font-size: 15px; font-weight: 600;">{section_text}: <span style="color: #0066cc;">{score}</span></p>')
+                else:
+                    html_parts.append(f'<p style="margin: 12px 0 8px 0; color: #333; font-size: 15px; font-weight: 600;">{line}</p>')
+            
+            # Check for bullet points
+            elif line.startswith(('-', '•', '*', '·')) or (len(line) > 2 and line[0].isdigit() and line[1] in '.):'):
+                if not in_list:
+                    html_parts.append('<ul style="margin: 8px 0 12px 20px; padding: 0; list-style-type: disc;">')
+                    in_list = True
+                # Remove bullet character and clean up
+                if line[0] in '-•*·':
+                    bullet_text = line[1:].strip()
+                else:
+                    # Handle numbered lists
+                    bullet_text = re.sub(r'^\d+[.)]\s*', '', line)
+                html_parts.append(f'<li style="margin: 4px 0; color: #333; font-size: 14px; line-height: 1.5;">{bullet_text}</li>')
+            
+            # Check for Summary: or other section headers ending with colon
+            elif line.endswith(':') and len(line) < 50:
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                html_parts.append(f'<p style="margin: 12px 0 8px 0; color: #333; font-size: 15px; font-weight: 600;">{line}</p>')
+            
+            # Check for key-value pairs (but not section headers)
+            elif ':' in line and not line.endswith(':') and not ('Score' in line or 'score' in line):
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                parts = line.split(':', 1)
+                if len(parts) == 2 and len(parts[0]) < 30:  # Only treat as key-value if key is reasonably short
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    html_parts.append(f'<p style="margin: 8px 0; color: #333; font-size: 14px;"><span style="font-weight: 500;">{key}:</span> {value}</p>')
+                else:
+                    html_parts.append(f'<p style="margin: 8px 0; color: #333; font-size: 14px; line-height: 1.5;">{line}</p>')
+            
+            # Regular paragraph
+            else:
+                if in_list:
+                    html_parts.append('</ul>')
+                    in_list = False
+                html_parts.append(f'<p style="margin: 8px 0; color: #333; font-size: 14px; line-height: 1.5;">{line}</p>')
+        
+        # Close any open list
+        if in_list:
+            html_parts.append('</ul>')
+        
+        # Wrap in a container div
+        formatted_html = f'''
+        <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            {''.join(html_parts)}
+        </div>
+        '''
+        
+        return formatted_html
+    
     def format_market_cap(self, market_cap: Optional[float]) -> str:
         """Format market cap value for display.
         
@@ -603,9 +759,7 @@ class EmailSender:
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
                         Investment Evaluation
                     </p>
-                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                        {investment_evaluation if investment_evaluation else "Investment evaluation analysis not available"}
-                    </p>
+                    {self.format_investment_evaluation(investment_evaluation)}
                     
                     <!-- Deep Research Button -->
                     <div style="text-align: center; margin-top: 24px;">
