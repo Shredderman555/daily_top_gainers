@@ -56,6 +56,11 @@ class Config:
         """Get Perplexity API key."""
         return os.getenv('PERPLEXITY_API_KEY', '')
     
+    @property
+    def polygon_api_key(self) -> str:
+        """Get Polygon API key."""
+        return os.getenv('POLYGON_API_KEY', 'P_QrzKzuvur6ysG9X_EI983sP0j4rud2')
+    
     def _validate_config(self) -> None:
         """Validate that all required configuration values are present."""
         required_vars = {
@@ -81,5 +86,6 @@ class Config:
             'smtp_port': self.smtp_port,
             'api_configured': bool(self.fmp_api_key),
             'email_configured': bool(self.email_password),
-            'perplexity_configured': bool(self.perplexity_api_key)
+            'perplexity_configured': bool(self.perplexity_api_key),
+            'polygon_configured': bool(self.polygon_api_key)
         }

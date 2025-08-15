@@ -7,6 +7,7 @@ import re
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
 from perplexity_client import PerplexityClient
+from polygon_client import PolygonClient
 
 
 logger = logging.getLogger(__name__)
@@ -1092,6 +1093,61 @@ class FMPAPIClient:
             logger.warning(f"Error fetching financial metrics for {symbol}: {e}")
         
         return metrics
+    
+    def enrich_with_polygon_data(self, stocks: List[Dict[str, Any]], 
+                                 polygon_api_key: str,
+                                 progress_callback: Optional[Callable] = None) -> List[Dict[str, Any]]:
+        """Enrich stock data with Polygon analyst ratings and price targets.
+        
+        Args:
+            stocks: List of stock dictionaries
+            polygon_api_key: Polygon API key
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            List of stocks with added Polygon analyst data
+        """
+        if not polygon_api_key:
+            logger.warning("No Polygon API key provided, skipping analyst ratings")
+            return stocks
+        
+        logger.info("Fetching analyst ratings from Polygon API")
+        
+        # Initialize Polygon client
+        with PolygonClient(polygon_api_key) as client:
+            # Get tickers
+            tickers = [stock.get('symbol', '') for stock in stocks if stock.get('symbol')]
+            
+            # Fetch price targets in batch
+            polygon_data = client.get_price_targets_batch(tickers)
+            
+            # Add Polygon data to stocks
+            for stock in stocks:
+                symbol = stock.get('symbol', '')
+                if symbol and symbol in polygon_data:
+                    data = polygon_data[symbol]
+                    stock['polygon_consensus'] = data.get('current_consensus')
+                    stock['polygon_consensus_7d'] = data.get('consensus_7d')
+                    stock['polygon_consensus_30d'] = data.get('consensus_30d')
+                    stock['polygon_trend_7d'] = data.get('trend_7d')
+                    stock['polygon_trend_30d'] = data.get('trend_30d')
+                    stock['polygon_analyst_count'] = data.get('analyst_count', 0)
+                    stock['polygon_recent_actions'] = data.get('recent_actions', [])
+                    
+                    if progress_callback:
+                        progress_callback(f"{stock.get('name', symbol)}", True, "polygon_data")
+                else:
+                    stock['polygon_consensus'] = None
+                    stock['polygon_consensus_7d'] = None
+                    stock['polygon_consensus_30d'] = None
+                    stock['polygon_trend_7d'] = None
+                    stock['polygon_trend_30d'] = None
+                    stock['polygon_analyst_count'] = 0
+                    stock['polygon_recent_actions'] = []
+            
+            logger.info(f"Successfully fetched Polygon data for {len(tickers)} stocks")
+        
+        return stocks
     
     def __enter__(self):
         """Context manager entry."""

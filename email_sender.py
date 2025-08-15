@@ -29,162 +29,259 @@ class EmailSender:
         self.sender_email = sender_email
         self.sender_password = sender_password
     
-    def format_investment_evaluation_html(self, eval_data: Dict[str, Any]) -> str:
-        """Format investment evaluation data as HTML.
+    def _create_price_target_chart(self, recent_actions: List[Dict[str, Any]], symbol: str) -> str:
+        """Create a simple HTML chart showing price target changes over time.
         
         Args:
-            eval_data: Parsed evaluation data
+            recent_actions: List of recent analyst actions with price targets
+            symbol: Stock symbol
             
         Returns:
-            HTML string for investment evaluation section
+            HTML string for the chart
         """
-        if not eval_data or 'total_score' not in eval_data:
+        if not recent_actions:
             return ""
         
-        # Determine color based on category
-        category = eval_data.get('category', '').lower()
-        if 'generational' in category:
-            color = '#00aa00'
-            badge_bg = '#e6ffe6'
-        elif 'strong buy' in category:
-            color = '#008800'
-            badge_bg = '#e6ffe6'
-        elif 'buy' in category and 'strong' not in category:
-            color = '#006600'
-            badge_bg = '#f0fff0'
-        elif 'watch' in category:
-            color = '#ff8800'
-            badge_bg = '#fff4e6'
-        elif 'pass' in category:
-            color = '#cc0000'
-            badge_bg = '#ffe6e6'
-        elif 'avoid' in category:
-            color = '#880000'
-            badge_bg = '#ffcccc'
-        else:
-            color = '#666666'
-            badge_bg = '#f5f5f5'
+        # Get min and max targets for scaling
+        targets = [a['target'] for a in recent_actions if a.get('target')]
+        if not targets:
+            return ""
         
-        score = eval_data.get('total_score', 0)
-        category_text = eval_data.get('category', 'Not Evaluated')
-        comparison = eval_data.get('comparison', '')
-        reasoning = eval_data.get('key_reasoning', '')
+        min_target = min(targets) * 0.95  # Add 5% padding
+        max_target = max(targets) * 1.05
+        target_range = max_target - min_target
         
-        # Build HTML - simplified to show only the score
-        html = f"""
-        <!-- Investment Evaluation -->
-        <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px; border: 2px solid {color};">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <p style="margin: 0; color: #333; font-size: 18px; font-weight: 700;">
-                    Investment Evaluation
+        # Create bars for the chart
+        bars = []
+        max_bars = min(10, len(recent_actions))  # Show max 10 bars
+        bar_width = 100 / max_bars
+        
+        for i, action in enumerate(recent_actions[:max_bars]):
+            if not action.get('target'):
+                continue
+            
+            target = action['target']
+            height_pct = ((target - min_target) / target_range) * 100 if target_range > 0 else 50
+            left_pct = i * bar_width
+            
+            # Color based on change
+            color = '#4CAF50'  # Green default
+            if action.get('target_prior'):
+                if target < action['target_prior']:
+                    color = '#f44336'  # Red for decrease
+                elif target == action['target_prior']:
+                    color = '#2196F3'  # Blue for no change
+            
+            bars.append(f"""
+                <div style="position: absolute; bottom: 0; left: {left_pct:.1f}%; width: {bar_width * 0.8:.1f}%; height: {height_pct:.1f}%; background-color: {color}; opacity: 0.8;">
+                    <div style="position: absolute; bottom: -20px; left: 0; right: 0; font-size: 9px; text-align: center; color: #666;">
+                        {action.get('date_short', '')}
+                    </div>
+                    <div style="position: absolute; top: -18px; left: 0; right: 0; font-size: 10px; text-align: center; font-weight: 500;">
+                        ${target:.0f}
+                    </div>
+                </div>
+            """)
+        
+        return f"""
+            <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; font-weight: 600;">
+                    Price Target Trend - {symbol}
                 </p>
-                <span style="background-color: {badge_bg}; color: {color}; padding: 6px 12px; border-radius: 6px; font-size: 16px; font-weight: 600;">
-                    {score}/20
-                </span>
+                <div style="position: relative; height: 150px; margin: 30px 0 30px 0; background: linear-gradient(to top, #f5f5f5 0%, #f5f5f5 50%, #fafafa 50%, #fafafa 100%); border-radius: 4px;">
+                    {''.join(bars)}
+                </div>
+                <div style="text-align: center; color: #999; font-size: 11px; margin-top: 10px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background-color: #4CAF50; margin-right: 4px;"></span> Upgrade
+                    <span style="display: inline-block; width: 12px; height: 12px; background-color: #f44336; margin: 0 4px 0 12px;"></span> Downgrade
+                    <span style="display: inline-block; width: 12px; height: 12px; background-color: #2196F3; margin: 0 4px 0 12px;"></span> Reiterated
+                </div>
             </div>
-        </div>"""
-        
-        # Add the full evaluation text if available
-        full_text = eval_data.get('full_text', '')
-        if full_text:
-            html += f"""
-            <!-- Detailed Investment Analysis -->
-            <p style="margin: 20px 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
-                Detailed Investment Analysis
-            </p>
-            <p style="margin: 0 0 16px 0; color: #333; font-size: 16px; line-height: 1.5; white-space: pre-wrap;">
-{full_text}
-            </p>
-            """
-        
-        return html
+        """
     
-    def parse_investment_evaluation(self, evaluation: Optional[str]) -> Dict[str, Any]:
-        """Parse investment evaluation text into structured data.
+    def _create_price_target_table(self, recent_actions: List[Dict[str, Any]]) -> str:
+        """Create a table showing the 15 most recent price target changes.
         
         Args:
-            evaluation: Investment evaluation text from API
+            recent_actions: List of recent analyst actions
             
         Returns:
-            Dictionary with parsed evaluation data
+            HTML string for the table
         """
-        if not evaluation:
-            return {}
+        if not recent_actions:
+            return ""
         
-        result = {}
-        
-        # Parse total score - look for various patterns
-        import re
-        # Try pattern like "scores 12/20" or "12/20" at the beginning
-        total_match = re.search(r'scores?\s*(\d+)/20', evaluation, re.IGNORECASE)
-        if not total_match:
-            # Try simpler pattern
-            total_match = re.search(r'(\d+)/20', evaluation)
-        if total_match:
-            result['total_score'] = int(total_match.group(1))
-        
-        # Parse category - look for patterns like "(Buy – good opportunity)" within first 500 chars
-        first_part = evaluation[:500]
-        category_match = re.search(r'\(([^)]*(?:Buy|Pass|Watch|Avoid|Generational)[^)]*)\)', first_part, re.IGNORECASE)
-        if category_match:
-            category_text = category_match.group(1)
-            # Clean up category text to extract just the category
-            if '–' in category_text:
-                result['category'] = category_text.split('–')[0].strip()
-            elif '-' in category_text:
-                result['category'] = category_text.split('-')[0].strip()
+        rows = []
+        for action in recent_actions[:15]:  # Show up to 15 most recent
+            firm = action.get('firm', 'Unknown')
+            date = action.get('date', '')
+            rating = action.get('rating', '')
+            target = action.get('target')
+            target_prior = action.get('target_prior')
+            action_type = action.get('action', 'Updates')
+            
+            # Format price target with change indicator
+            if target:
+                if target_prior and target_prior != target:
+                    change = target - target_prior
+                    if change > 0:
+                        target_str = f'<span style="color: #4CAF50;">↑</span> ${target:.0f} <span style="color: #999; font-size: 11px;">(+${change:.0f})</span>'
+                    else:
+                        target_str = f'<span style="color: #f44336;">↓</span> ${target:.0f} <span style="color: #999; font-size: 11px;">({change:.0f})</span>'
+                else:
+                    target_str = f"${target:.0f}"
             else:
-                result['category'] = category_text.strip()
+                target_str = "N/A"
+            
+            # Get rating color
+            rating_lower = rating.lower() if rating else ''
+            if 'buy' in rating_lower or 'outperform' in rating_lower or 'overweight' in rating_lower:
+                rating_color = '#4CAF50'
+            elif 'hold' in rating_lower or 'neutral' in rating_lower:
+                rating_color = '#FF9800'
+            elif 'sell' in rating_lower or 'underperform' in rating_lower:
+                rating_color = '#f44336'
+            else:
+                rating_color = '#666'
+            
+            rows.append(f"""
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                    <td style="padding: 8px 4px; color: #666; font-size: 13px;">{date}</td>
+                    <td style="padding: 8px 4px; color: #333; font-size: 13px;">{firm}</td>
+                    <td style="padding: 8px 4px; color: #666; font-size: 13px;">{action_type}</td>
+                    <td style="padding: 8px 4px; color: {rating_color}; font-size: 13px; font-weight: 500;">{rating}</td>
+                    <td style="padding: 8px 4px; color: #333; font-size: 13px; font-weight: 500;">{target_str}</td>
+                </tr>
+            """)
         
-        # Parse comparison - look for "resembles" or "similar to"
-        comparison_match = re.search(r'(?:resembles?|similar to)\s+([^.,:]+)', evaluation, re.IGNORECASE)
-        if comparison_match:
-            result['comparison'] = comparison_match.group(1).strip()
+        if not rows:
+            return ""
         
-        # Parse key reasoning
-        reasoning_match = re.search(r'KEY REASONING:\s*([^\n]+(?:\n[^\n]+)?)', evaluation)
-        if reasoning_match:
-            result['key_reasoning'] = reasoning_match.group(1).strip()
+        return f"""
+            <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="margin: 0 0 12px 0; color: #333; font-size: 16px; font-weight: 600;">
+                    Recent Analyst Actions (Last 15 Changes)
+                </p>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e0e0e0;">
+                            <th style="padding: 8px 4px; text-align: left; color: #666; font-size: 12px; font-weight: 600;">Date</th>
+                            <th style="padding: 8px 4px; text-align: left; color: #666; font-size: 12px; font-weight: 600;">Analyst</th>
+                            <th style="padding: 8px 4px; text-align: left; color: #666; font-size: 12px; font-weight: 600;">Action</th>
+                            <th style="padding: 8px 4px; text-align: left; color: #666; font-size: 12px; font-weight: 600;">Rating</th>
+                            <th style="padding: 8px 4px; text-align: left; color: #666; font-size: 12px; font-weight: 600;">Price Target</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join(rows)}
+                    </tbody>
+                </table>
+            </div>
+        """
+    
+    def _format_polygon_section(self, stock: Dict[str, Any]) -> str:
+        """Format the Polygon analyst data section for a stock.
         
-        # Parse individual scores
-        scores = {}
-        score_patterns = [
-            (r'Technical Innovation:\s*([-\d]+)', 'tech_innovation'),
-            (r'Technical Complexity:\s*([-\d]+)', 'tech_complexity'),
-            (r'Technical Risk:\s*([-\d]+)', 'tech_risk'),
-            (r'Irreplaceable Assets:\s*([-\d]+)', 'irreplaceable'),
-            (r'Revenue Quality:\s*([-\d]+)', 'revenue_quality'),
-            (r'Unit Economics:\s*([-\d]+)', 'unit_economics'),
-            (r'Growth Runway:\s*([-\d]+)', 'growth_runway'),
-            (r'Market Position:\s*([-\d]+)', 'market_position'),
-            (r'Valuation:\s*([-\d]+)', 'valuation')
-        ]
+        Args:
+            stock: Stock dictionary with Polygon data
+            
+        Returns:
+            HTML string for Polygon section
+        """
+        # Get Polygon data
+        polygon_consensus = stock.get('polygon_consensus')
+        polygon_trend_7d = stock.get('polygon_trend_7d')
+        polygon_trend_30d = stock.get('polygon_trend_30d')
+        polygon_analyst_count = stock.get('polygon_analyst_count', 0)
+        polygon_recent_actions = stock.get('polygon_recent_actions', [])
         
-        for pattern, key in score_patterns:
-            match = re.search(pattern, evaluation)
-            if match:
-                scores[key] = int(match.group(1))
+        # Skip section if no Polygon data
+        if not polygon_consensus and polygon_analyst_count == 0:
+            return ""
         
-        result['scores'] = scores
+        # Format recent actions
+        actions_html = ""
+        if polygon_recent_actions:
+            action_rows = []
+            for action in polygon_recent_actions[:3]:  # Show max 3 recent actions
+                firm = action.get('firm', 'Unknown')
+                date = action.get('date', '')
+                rating = action.get('rating', '')
+                target = action.get('target')
+                target_prior = action.get('target_prior')
+                
+                # Format price target change
+                if target:
+                    if target_prior and target_prior != target:
+                        if target > target_prior:
+                            target_str = f"↑ ${target:.0f}"
+                        else:
+                            target_str = f"↓ ${target:.0f}"
+                    else:
+                        target_str = f"${target:.0f}"
+                else:
+                    target_str = "N/A"
+                
+                # Get rating emoji
+                rating_lower = rating.lower() if rating else ''
+                if 'buy' in rating_lower or 'outperform' in rating_lower or 'overweight' in rating_lower:
+                    emoji = '🟢'
+                elif 'hold' in rating_lower or 'neutral' in rating_lower:
+                    emoji = '🟡'
+                elif 'sell' in rating_lower or 'underperform' in rating_lower:
+                    emoji = '🔴'
+                else:
+                    emoji = '⚪'
+                
+                action_rows.append(f"""
+                    <tr>
+                        <td style="padding: 4px 0; color: #666; font-size: 13px;">{date}</td>
+                        <td style="padding: 4px 8px; color: #333; font-size: 13px;">{firm}</td>
+                        <td style="padding: 4px 8px; color: #333; font-size: 13px;">{emoji} {rating}</td>
+                        <td style="padding: 4px 0; color: #333; font-size: 13px; font-weight: 500;">{target_str}</td>
+                    </tr>
+                """)
+            
+            actions_html = f"""
+                <div style="margin-top: 12px;">
+                    <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; font-weight: 500;">Recent Analyst Actions:</p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        {''.join(action_rows)}
+                    </table>
+                </div>
+            """
         
-        # Parse quick tests
-        tests = {}
-        test_patterns = [
-            (r'Technical Test:\s*.*?(Yes|No)', 'technical_test'),
-            (r'Business Test:\s*.*?(Yes|No|Maybe)', 'business_test'),
-            (r'Growth Test:\s*.*?(Yes|No|Maybe)', 'growth_test'),
-            (r'Moat Test:\s*.*?(Yes|No)', 'moat_test'),
-            (r'Price Test:\s*.*?(Yes|No)', 'price_test')
-        ]
-        
-        for pattern, key in test_patterns:
-            match = re.search(pattern, evaluation, re.IGNORECASE)
-            if match:
-                tests[key] = match.group(1)
-        
-        result['quick_tests'] = tests
-        
-        return result
+        return f"""
+            <!-- Polygon Analyst Data Section -->
+            <div style="background-color: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="margin: 0 0 12px 0; color: #333; font-size: 16px; font-weight: 600;">
+                    Analyst Sentiment (Polygon)
+                </p>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #666; font-size: 14px; width: 25%;">Consensus Target:</td>
+                        <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500; width: 25%;">
+                            {f"${polygon_consensus:.0f}" if polygon_consensus else "N/A"}
+                        </td>
+                        <td style="padding: 6px 0; color: #666; font-size: 14px; width: 25%;">Analysts:</td>
+                        <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500; width: 25%;">
+                            {polygon_analyst_count if polygon_analyst_count > 0 else "N/A"}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #666; font-size: 14px;">7-Day Trend:</td>
+                        <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">
+                            {polygon_trend_7d if polygon_trend_7d else "N/A"}
+                        </td>
+                        <td style="padding: 6px 0; color: #666; font-size: 14px;">30-Day Trend:</td>
+                        <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">
+                            {polygon_trend_30d if polygon_trend_30d else "N/A"}
+                        </td>
+                    </tr>
+                </table>
+                {actions_html}
+            </div>
+        """
     
     def format_market_cap(self, market_cap: Optional[float]) -> str:
         """Format market cap value for display.
@@ -330,11 +427,8 @@ class EmailSender:
             # Get revenue projection for 2030
             revenue_projection_2030 = stock.get('revenue_projection_2030', None)
             
-            # Get investment evaluation
-            investment_evaluation = stock.get('investment_evaluation', None)
-            eval_data = self.parse_investment_evaluation(investment_evaluation)
-            # Keep the full evaluation text for display
-            eval_data['full_text'] = investment_evaluation
+            # Get Polygon recent actions for visualizations
+            polygon_recent_actions = stock.get('polygon_recent_actions', [])
             
             # Get financial metrics
             gross_margin = stock.get('gross_margin', None)
@@ -380,6 +474,9 @@ class EmailSender:
             # Format scores
             competitive_display = f"{competitive_score}/10" if competitive_score is not None else "N/A"
             growth_score_display = f"{market_growth_score}/10" if market_growth_score is not None else "N/A"
+            
+            # Create price target table (chart removed per user request)
+            price_target_table = self._create_price_target_table(polygon_recent_actions) if polygon_recent_actions else ""
             
             stock_cards.append(f"""
                 <div style="background-color: #f5f5f5; border-radius: 16px; padding: 24px; margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
@@ -486,15 +583,16 @@ class EmailSender:
                         {earnings_guidance if earnings_guidance else "No recent earnings guidance updates available"}
                     </p>
                     
-                    <!-- Analyst Price Targets -->
+                    <!-- Price Target Table -->
+                    {price_target_table}
+                    
+                    <!-- Analyst Price Targets (Legacy text format) -->
                     <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
-                        Analyst Price Target Changes
+                        Analyst Price Target Summary
                     </p>
                     <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                        {analyst_price_targets if analyst_price_targets else "No recent analyst price target changes available"}
+                        {analyst_price_targets if analyst_price_targets else "No additional analyst price target information available"}
                     </p>
-                    
-                    {self.format_investment_evaluation_html(eval_data)}
                     
                     <!-- Deep Research Button -->
                     <div style="text-align: center; margin-top: 24px;">

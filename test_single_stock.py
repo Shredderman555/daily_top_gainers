@@ -49,6 +49,11 @@ def main():
             # Fetch remaining Perplexity data
             print(f"Fetching detailed company data...")
             test_stock = api.enrich_with_descriptions(test_stock, config.perplexity_api_key)
+            
+            # Fetch Polygon analyst data
+            if config.polygon_api_key:
+                print(f"Fetching analyst ratings from Polygon...")
+                test_stock = api.enrich_with_polygon_data(test_stock, config.polygon_api_key)
     
     # Fetch put/call ratio
     put_call_ratio = None

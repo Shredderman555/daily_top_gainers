@@ -158,6 +158,8 @@ def main() -> None:
                             print(f"  → {company} revenue projection 2030 ✓")
                         elif data_type == "financial_metrics":
                             print(f"  → {company} financial metrics ✓")
+                        elif data_type == "polygon_data":
+                            print(f"  → {company} Polygon analyst data ✓")
                         else:
                             print(f"  → {company} description ✓")
                     else:
@@ -230,6 +232,18 @@ def main() -> None:
                         ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
                         guidance_successful = sum(1 for stock in sorted_gainers if stock.get('earnings_guidance'))
                         print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)})")
+                        
+                        # Fetch Polygon analyst data
+                        if config.polygon_api_key:
+                            print("\nFetching analyst ratings from Polygon:")
+                            sorted_gainers = api_client.enrich_with_polygon_data(
+                                sorted_gainers,
+                                config.polygon_api_key,
+                                progress_callback=progress_callback
+                            )
+                            
+                            polygon_successful = sum(1 for stock in sorted_gainers if stock.get('polygon_consensus') is not None)
+                            print(f"✓ Polygon data fetched ({polygon_successful}/{len(sorted_gainers)} companies)")
             
             # Log top gainers
             if sorted_gainers:
