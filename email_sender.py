@@ -437,10 +437,13 @@ class EmailSender:
             long_term_debt = stock.get('long_term_debt', None)
             cash_and_equivalents = stock.get('cash_and_equivalents', None)
             
-            # Get consensus price target history
-            pt_consensus_current = stock.get('pt_consensus_current', None)
-            pt_consensus_7d = stock.get('pt_consensus_7d', None)
-            pt_consensus_30d = stock.get('pt_consensus_30d', None)
+            # Get consensus price target history from Polygon (prioritize) or FMP (fallback)
+            # Use Polygon data if available, otherwise fall back to FMP
+            pt_consensus_current = stock.get('polygon_consensus') or stock.get('pt_consensus_current', None)
+            pt_consensus_7d = stock.get('polygon_consensus_7d') or stock.get('pt_consensus_7d', None)
+            pt_consensus_30d = stock.get('polygon_consensus_30d') or stock.get('pt_consensus_30d', None)
+            # For 90d/180d, use Polygon 90d if available, else FMP 180d
+            pt_consensus_90d = stock.get('polygon_consensus_90d', None)
             pt_consensus_180d = stock.get('pt_consensus_180d', None)
             pt_change_7d = stock.get('pt_change_7d', None)
             pt_change_30d = stock.get('pt_change_30d', None)
@@ -537,15 +540,15 @@ class EmailSender:
                             <tr>
                                 <td style="padding: 6px 0; color: #666; font-size: 14px;">PT Now:</td>
                                 <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{f"${pt_consensus_current:.0f}" if pt_consensus_current else "N/A"}</td>
-                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 7d:</td>
-                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_7d, pt_change_7d)}</td>
-                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 30d:</td>
-                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_30d, pt_change_30d)}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 7d ago:</td>
+                                <td style="padding: 6px 16px 6px 0; color: #333; font-size: 14px; font-weight: 500;">{f"${pt_consensus_7d:.0f}" if pt_consensus_7d else "N/A"}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 30d ago:</td>
+                                <td style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{f"${pt_consensus_30d:.0f}" if pt_consensus_30d else "N/A"}</td>
                             </tr>
-                            <!-- Sixth row - Price Target 180d -->
+                            <!-- Sixth row - Price Target 90d (Polygon) or 180d (FMP) -->
                             <tr>
-                                <td style="padding: 6px 0; color: #666; font-size: 14px;">PT 180d:</td>
-                                <td colspan="5" style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{format_pt_with_change(pt_consensus_current, pt_consensus_180d, pt_change_180d)}</td>
+                                <td style="padding: 6px 0; color: #666; font-size: 14px;">{"PT 90d ago:" if pt_consensus_90d is not None else "PT 180d:"}</td>
+                                <td colspan="5" style="padding: 6px 0; color: #333; font-size: 14px; font-weight: 500;">{f"${pt_consensus_90d:.0f}" if pt_consensus_90d is not None else format_pt_with_change(pt_consensus_current, pt_consensus_180d, pt_change_180d)}</td>
                             </tr>
                         </table>
                     </div>

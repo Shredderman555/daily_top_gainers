@@ -1129,6 +1129,7 @@ class FMPAPIClient:
                     stock['polygon_consensus'] = data.get('current_consensus')
                     stock['polygon_consensus_7d'] = data.get('consensus_7d')
                     stock['polygon_consensus_30d'] = data.get('consensus_30d')
+                    stock['polygon_consensus_90d'] = data.get('consensus_90d')
                     stock['polygon_trend_7d'] = data.get('trend_7d')
                     stock['polygon_trend_30d'] = data.get('trend_30d')
                     stock['polygon_analyst_count'] = data.get('analyst_count', 0)
@@ -1140,6 +1141,7 @@ class FMPAPIClient:
                     stock['polygon_consensus'] = None
                     stock['polygon_consensus_7d'] = None
                     stock['polygon_consensus_30d'] = None
+                    stock['polygon_consensus_90d'] = None
                     stock['polygon_trend_7d'] = None
                     stock['polygon_trend_30d'] = None
                     stock['polygon_analyst_count'] = 0

@@ -73,14 +73,30 @@ class PolygonClient:
                 'price_target_history': []
             }
         
+        # Helper function to get point-in-time consensus
+        def get_consensus_at_point(all_ratings_data, days_ago_cutoff):
+            """Get consensus as it was X days ago by taking most recent target from each analyst before that date."""
+            analyst_targets_at_point = {}
+            
+            for rating_data in all_ratings_data:
+                # Only include ratings older than the cutoff
+                if rating_data['days_ago'] >= days_ago_cutoff:
+                    firm = rating_data['firm']
+                    # Keep the most recent target from each analyst before the cutoff
+                    if firm not in analyst_targets_at_point or rating_data['days_ago'] < analyst_targets_at_point[firm]['days_ago']:
+                        analyst_targets_at_point[firm] = rating_data
+            
+            # Calculate consensus from unique analysts at that point in time
+            if analyst_targets_at_point:
+                targets = [data['target'] for data in analyst_targets_at_point.values()]
+                return sum(targets) / len(targets)
+            return None
+        
         # Group ratings by timeframe
         today = datetime.now()
-        targets_current = []
-        targets_7d = []
-        targets_30d = []
-        targets_90d = []
         recent_actions = []
         price_target_history = []
+        all_ratings_data = []
         
         # Track unique analysts for current consensus
         analyst_targets = {}
@@ -109,6 +125,14 @@ class PolygonClient:
             
             # Get analyst firm
             firm = getattr(rating, 'firm', None) or getattr(rating, 'analyst_firm', 'Unknown')
+            
+            # Store all rating data for point-in-time calculations
+            all_ratings_data.append({
+                'firm': firm,
+                'target': pt,
+                'days_ago': days_ago,
+                'date': rating_date
+            })
             
             # Track most recent target per analyst for current consensus
             if firm not in analyst_targets or days_ago < analyst_targets[firm]['days_ago']:
@@ -140,23 +164,15 @@ class PolygonClient:
                     'firm': firm,
                     'days_ago': days_ago
                 })
-            
-            # Categorize by timeframe
-            if days_ago <= 7:
-                targets_7d.append(pt)
-            elif days_ago <= 30:
-                targets_30d.append(pt)
-            elif days_ago <= 90:
-                targets_90d.append(pt)
         
         # Calculate current consensus from unique analysts
         targets_current = [data['target'] for data in analyst_targets.values()]
-        
-        # Calculate consensus values
         current_consensus = sum(targets_current) / len(targets_current) if targets_current else None
-        consensus_7d = sum(targets_7d) / len(targets_7d) if targets_7d else None
-        consensus_30d = sum(targets_30d) / len(targets_30d) if targets_30d else None
-        consensus_90d = sum(targets_90d) / len(targets_90d) if targets_90d else None
+        
+        # Calculate point-in-time consensus values
+        consensus_7d = get_consensus_at_point(all_ratings_data, 7)
+        consensus_30d = get_consensus_at_point(all_ratings_data, 30)
+        consensus_90d = get_consensus_at_point(all_ratings_data, 90)
         
         # Calculate trends
         trend_7d = None
