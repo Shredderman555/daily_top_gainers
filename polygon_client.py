@@ -118,7 +118,7 @@ class PolygonClient:
             if len(recent_actions) < 15:
                 action = getattr(rating, 'rating_action', None) or getattr(rating, 'action', 'Updates')
                 rating_value = getattr(rating, 'rating', None) or getattr(rating, 'rating_current', '')
-                pt_prior = getattr(rating, 'price_target_prior', None)
+                pt_prior = getattr(rating, 'previous_price_target', None)
                 
                 action_info = {
                     'date': rating_date.strftime("%b %d, %Y"),

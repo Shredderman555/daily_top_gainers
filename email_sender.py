@@ -120,14 +120,13 @@ class EmailSender:
             target_prior = action.get('target_prior')
             action_type = action.get('action', 'Updates')
             
-            # Format price target with change indicator
+            # Format price target with change indicator showing previous price
             if target:
                 if target_prior and target_prior != target:
-                    change = target - target_prior
-                    if change > 0:
-                        target_str = f'<span style="color: #4CAF50;">↑</span> ${target:.0f} <span style="color: #999; font-size: 11px;">(+${change:.0f})</span>'
+                    if target > target_prior:
+                        target_str = f'<span style="color: #4CAF50;">↑</span> ${target:.0f} <span style="color: #999; font-size: 11px;">(from ${target_prior:.0f})</span>'
                     else:
-                        target_str = f'<span style="color: #f44336;">↓</span> ${target:.0f} <span style="color: #999; font-size: 11px;">({change:.0f})</span>'
+                        target_str = f'<span style="color: #f44336;">↓</span> ${target:.0f} <span style="color: #999; font-size: 11px;">(from ${target_prior:.0f})</span>'
                 else:
                     target_str = f"${target:.0f}"
             else:
