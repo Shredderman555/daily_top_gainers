@@ -156,6 +156,8 @@ def main() -> None:
                             print(f"  → {company} analyst price targets ✓")
                         elif data_type == "revenue_projection_2030":
                             print(f"  → {company} revenue projection 2030 ✓")
+                        elif data_type == "investment_evaluation":
+                            print(f"  → {company} investment evaluation ✓")
                         elif data_type == "financial_metrics":
                             print(f"  → {company} financial metrics ✓")
                         elif data_type == "polygon_data":
@@ -231,7 +233,8 @@ def main() -> None:
                         desc_successful = sum(1 for stock in sorted_gainers if stock.get('description'))
                         ps_successful = sum(1 for stock in sorted_gainers if stock.get('ps_ratio') is not None)
                         guidance_successful = sum(1 for stock in sorted_gainers if stock.get('earnings_guidance'))
-                        print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)})")
+                        eval_successful = sum(1 for stock in sorted_gainers if stock.get('investment_evaluation'))
+                        print(f"✓ Data fetching complete (descriptions: {desc_successful}/{len(sorted_gainers)}, P/S ratios: {ps_successful}/{len(sorted_gainers)}, earnings guidance: {guidance_successful}/{len(sorted_gainers)}, investment evaluations: {eval_successful}/{len(sorted_gainers)})")
                         
                         # Fetch Polygon analyst data
                         if config.polygon_api_key:

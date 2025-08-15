@@ -710,7 +710,14 @@ class FMPAPIClient:
                 delay=1.5
             )
             
-            # Add descriptions, P/S ratios, earnings guidance, and analyst price targets to stock data
+            # Fetch investment evaluations
+            investment_evaluations, evaluation_successful = client.get_investment_evaluation_batch(
+                company_names,
+                progress_callback=progress_callback,
+                delay=1.5
+            )
+            
+            # Add descriptions, P/S ratios, earnings guidance, analyst price targets, and investment evaluations to stock data
             for stock, company_name in zip(stocks, company_names):
                 # Parse the structured description response
                 full_description = descriptions.get(company_name, None)
@@ -731,6 +738,7 @@ class FMPAPIClient:
                 stock['ps_ratio'] = ps_ratios.get(company_name, None)
                 stock['earnings_guidance'] = earnings_guidance.get(company_name, None)
                 stock['analyst_price_targets'] = analyst_price_targets.get(company_name, None)
+                stock['investment_evaluation'] = investment_evaluations.get(company_name, None)
                 
                 # Fetch financial metrics
                 symbol = stock.get('symbol', '')
@@ -760,6 +768,7 @@ class FMPAPIClient:
             logger.info(f"Successfully fetched P/S ratios for {ps_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched earnings guidance for {guidance_successful}/{len(stocks)} companies")
             logger.info(f"Successfully fetched analyst price targets for {price_targets_successful}/{len(stocks)} companies")
+            logger.info(f"Successfully fetched investment evaluations for {evaluation_successful}/{len(stocks)} companies")
         
         return stocks
     

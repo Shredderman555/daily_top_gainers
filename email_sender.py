@@ -426,6 +426,9 @@ class EmailSender:
             # Get revenue projection for 2030
             revenue_projection_2030 = stock.get('revenue_projection_2030', None)
             
+            # Get investment evaluation
+            investment_evaluation = stock.get('investment_evaluation', None)
+            
             # Get Polygon recent actions for visualizations
             polygon_recent_actions = stock.get('polygon_recent_actions', [])
             
@@ -594,6 +597,14 @@ class EmailSender:
                     </p>
                     <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
                         {analyst_price_targets if analyst_price_targets else "No additional analyst price target information available"}
+                    </p>
+                    
+                    <!-- Investment Evaluation -->
+                    <p style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: 600;">
+                        Investment Evaluation
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
+                        {investment_evaluation if investment_evaluation else "Investment evaluation analysis not available"}
                     </p>
                     
                     <!-- Deep Research Button -->
