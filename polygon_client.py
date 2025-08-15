@@ -75,14 +75,16 @@ class PolygonClient:
         
         # Helper function to get point-in-time consensus
         def get_consensus_at_point(all_ratings_data, days_ago_cutoff):
-            """Get consensus as it was X days ago by taking most recent target from each analyst before that date."""
+            """Get consensus as it was X days ago by taking most recent target from each analyst within 6 months before that date."""
             analyst_targets_at_point = {}
             
             for rating_data in all_ratings_data:
-                # Only include ratings older than the cutoff
-                if rating_data['days_ago'] >= days_ago_cutoff:
+                # Only include ratings that are:
+                # 1. At least as old as the cutoff (e.g., >= 7 days ago for PT 7d)
+                # 2. Not older than cutoff + 180 days (within 6-month window)
+                if rating_data['days_ago'] >= days_ago_cutoff and rating_data['days_ago'] <= days_ago_cutoff + 180:
                     firm = rating_data['firm']
-                    # Keep the most recent target from each analyst before the cutoff
+                    # Keep the most recent target from each analyst within the window
                     if firm not in analyst_targets_at_point or rating_data['days_ago'] < analyst_targets_at_point[firm]['days_ago']:
                         analyst_targets_at_point[firm] = rating_data
             
@@ -134,9 +136,10 @@ class PolygonClient:
                 'date': rating_date
             })
             
-            # Track most recent target per analyst for current consensus
-            if firm not in analyst_targets or days_ago < analyst_targets[firm]['days_ago']:
-                analyst_targets[firm] = {'target': pt, 'days_ago': days_ago}
+            # Track most recent target per analyst for current consensus (within 180 days)
+            if days_ago <= 180:  # Only include targets from last 6 months
+                if firm not in analyst_targets or days_ago < analyst_targets[firm]['days_ago']:
+                    analyst_targets[firm] = {'target': pt, 'days_ago': days_ago}
             
             # Collect all actions for history (up to 15 most recent)
             if len(recent_actions) < 15:
