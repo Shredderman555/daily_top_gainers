@@ -822,160 +822,293 @@ class PerplexityClient:
 
 Evaluate {company_name} on these criteria:
 
-Part A: Technical Excellence (0-8 points)
-1. Fundamental Technical Innovation (0-2 points)
+PART A: TECHNICAL EXCELLENCE (0-20 points) - 20%
+================================================
 
-Are they inventing new algorithms, materials, or methods vs. integrating existing ones?
-Would world-class engineers with unlimited funding still need 3+ years to replicate?
-Have they solved problems previously thought intractable?
-Do they have breakthrough IP that's defendable?
+1. Fundamental Technical Innovation (0-5 points)
+- Are they inventing new algorithms, materials, or methods vs. integrating existing ones?
+- Would world-class engineers with unlimited funding still need 3+ years to replicate?
+- Have they solved problems previously thought intractable?
+- Do they have breakthrough IP that's defendable?
 
-Score 0-2: (0=using existing tech, 1=incremental innovation, 2=breakthrough innovation)
-2. Technical Complexity & Barriers (0-2 points)
+Score 0-5: (0-1=using existing tech, 2-3=incremental innovation, 4-5=breakthrough innovation)
 
-Does replication require rare expertise, massive datasets, or specialized infrastructure?
-Are there compounding technical advantages that grow over time?
-Would a competitor need to solve multiple hard problems in sequence?
-Is the technical challenge in the implementation details that take years to perfect?
+2. Technical Complexity & Barriers (0-5 points)
+- Does replication require rare expertise, massive datasets, or specialized infrastructure?
+- Are there compounding technical advantages that grow over time?
+- Would a competitor need to solve multiple hard problems in sequence?
+- Is the technical challenge in the implementation details that take years to perfect?
 
-Score 0-2: (0=straightforward, 1=complex but doable, 2=extremely difficult to replicate)
-3. Technical Risk & Systems Mastery (0-2 points)
+Score 0-5: (0-1=straightforward, 2-3=complex but doable, 4-5=extremely difficult to replicate)
 
-Are they attempting something with genuine technical risk?
-Do they excel at making complex systems work at unprecedented scale?
-Do they require mastery across multiple technical domains?
-Are they 5-10 years ahead of competitors technically?
+3. Technical Risk & Systems Mastery (0-5 points)
+- Are they attempting something with genuine technical risk?
+- Do they excel at making complex systems work at unprecedented scale?
+- Do they require mastery across multiple technical domains?
+- Are they 5-10 years ahead of competitors technically?
 
-Score 0-2: (0=proven approach, 1=moderate innovation, 2=pushing limits of possible)
-4. Irreplaceable Technical Assets (0-2 points)
+Score 0-5: (0-1=proven approach, 2-3=moderate innovation, 4-5=pushing limits of possible)
 
-Do they have technical assets (team, data, infrastructure) that money alone can't buy?
-Have they accumulated technical advantages that compound?
-Do the world's best engineers specifically want to work there?
-Would losing their key technical resources be company-ending?
+4. Irreplaceable Technical Assets (0-5 points)
+- Do they have technical assets (team, data, infrastructure) that money alone can't buy?
+- Have they accumulated technical advantages that compound?
+- Do the world's best engineers specifically want to work there?
+- Would losing their key technical resources be company-ending?
 
-Score 0-2: (0=replaceable, 1=strong assets, 2=irreplaceable advantages)
-Part B: Business Power (0-12 points)
-5. Revenue Quality & Durability (0-2 points)
+Score 0-5: (0-1=replaceable, 2-3=strong assets, 4-5=irreplaceable advantages)
 
-Does the product become mission-critical and embedded?
-Do they have 120%+ net revenue retention (land-and-expand)?
-Are contracts multi-year with 90%+ gross renewal rates?
-Are switching costs measured in years and millions of dollars?
+PART B: FUTURE GROWTH & MULTIPLE SUSTAINABILITY (0-50 points) - 50% 🔴🔴🔴
+===========================================================================
 
-Score 0-2: (0=high churn, 1=solid retention, 2=deeply embedded/expanding)
-6. Market Position & Competitive Dynamics (0-2 points)
+Evaluate the company's ability to maintain/expand valuation multiples over the next decade:
 
-Are they the default choice or heading there?
-Do they have winner-take-most dynamics?
-Is their competitive lead widening?
-Would customers panic if they disappeared tomorrow?
+FIRST: Check for Narrative Violations (Bonus opportunity)
+----------------------------------------------------------
+Before scoring, ask: Is the market fundamentally wrong about this company?
 
-Score 0-2: (0=weak position, 1=solid competitor, 2=dominant/irreplaceable)
-7. Growth & Profitability Runway (0-4 points) 🔴 DOUBLE WEIGHT
-Evaluate total value creation potential (revenue growth × margin expansion × duration):
+NARRATIVE VIOLATION INDICATORS (if 3+ apply, add 10-15 bonus points):
+□ Market calls it "just a [commodity business]" but it's really a platform
+□ "TAM too small" but behavior shift could expand it 100x
+□ "Incumbents will win" but they have non-obvious advantages
+□ "Too capital intensive" but that creates the moat
+□ "Services company" but building software/platform
+□ Trading at depressed multiple due to misunderstanding
+□ Founder investing heavily in "unnecessary" capabilities
+□ Building for a world that doesn't exist yet
 
-4 points: 20x+ potential over next decade
+Examples of narrative violations that worked:
+- Amazon 2010: "Low margin retailer" → Everything store + AWS
+- Netflix 2005: "DVD by mail" → Streaming transformation  
+- Tesla 2015: "Luxury cars" → Energy & transportation revolution
+- Nvidia 2019: "Gaming company" → AI infrastructure
+- Palantir 2022: "Services company" → AI operating system
 
-Rule of 80+ (Growth % + FCF Margin %), OR
-50%+ growth sustainable for 7+ years with path to profitability, OR
-Creating entirely new markets with massive TAM expansion
-Examples: Nvidia (Rule of 155), early Tesla, SpaceX
+SECOND: Check for Early Stage Frontier Opportunity
+---------------------------------------------------
+For companies with <$500M revenue, evaluate differently:
 
+EARLY STAGE FRONTIER BONUS (add 15-20 points if 5+ are true):
+□ Founder has unique domain expertise (ex-SEAL, ex-SpaceX, PhD in field)
+□ Building for market that WILL exist but doesn't yet
+□ Solving problem that MUST be solved (national security, climate, health)
+□ Technical approach is revolutionary not evolutionary
+□ Top-tier VCs investing (Founders Fund, a16z, Sequoia)
+□ Government or Fortune 500 already piloting
+□ Recruiting world-class team from day 1
+□ 10+ years ahead but catalyst approaching
 
-3 points: 10-20x potential
+Examples:
+- Anduril 2019: Defense autonomy before Ukraine made it obvious
+- SpaceX 2008: Reusable rockets when everyone said impossible
+- Palantir 2010: Data integration before big data explosion
+- OpenAI 2019: AGI research before ChatGPT breakthrough
 
-Rule of 60+ sustained for multiple years, OR
-30-40% growth for 7+ years with margin expansion
-Multiple untapped growth vectors
-Examples: Palantir, Databricks
+THIRD: Identify Upcoming Catalysts (add 10-15 points)
+------------------------------------------------------
+Is there a catalyst that will make this obvious?
 
+□ Geopolitical (Ukraine → defense tech)
+□ Regulatory (AI regulation → need for governance)
+□ Technology breakthrough (GPT → AI explosion)
+□ Cost curve (batteries → EVs viable)
+□ Behavior shift (COVID → remote work)
+□ Government spending (CHIPS Act → semiconductors)
+□ Infrastructure buildout (5G → edge computing)
+□ Demographic shift (aging → healthcare tech)
 
-2 points: 5-10x potential
+THEN: Score Base Future Potential
+----------------------------------
 
-Rule of 40-60, OR
-25-30% growth for 5 years with stable margins
-Clear path but eventually saturates
+45-50 points (before bonuses): Generational inflection point company
+- Positioned for massive behavior shift others don't see
+- Building capabilities that seem excessive today but critical tomorrow
+- At intersection of multiple exploding trends
+- Market will re-rate from "commodity" to "platform" multiple
+- Could sustain 50x+ sales multiple for years as market realizes
+- The "obvious in retrospect" investment
 
+35-44 points: Frontier industry leader with expanding multiples
+- At the forefront of consensus frontier industries (AI, space, biotech)
+- Market understands direction but not magnitude
+- 40%+ growth sustainable for 5-7 years
+- Multiple expansion as TAM becomes clear
+- Rule of 80+ with improving trajectory
 
-1 point: 3-5x potential
+25-34 points: Strong growth with sustained premium multiples
+- Leading a major technological shift that's <20% penetrated
+- 25-35% growth for 5+ years
+- Rule of 60+ sustainable
+- Can maintain current multiple for 5+ years
 
-Rule of 30-40
-15-25% growth OR profitable but slow growth
+15-24 points: Solid growth but multiple compression likely
+- Good growth (15-25%) but market maturing
+- Competition increasing
+- Multiple likely to compress 30-50% over 5 years
 
+5-14 points: Limited growth, significant multiple compression ahead
+- Single-digit to low-teens growth
+- Market saturating or being disrupted
+- Multiple likely to compress 50-70%
 
-0 points: <3x potential
+0-4 points: Declining relevance
+- Business model being disrupted
+- Losing market share
 
-Rule of <30
-Low growth AND low margins
+KEY QUESTIONS FOR MAXIMUM SCORE:
+- What does the founder see that the market doesn't?
+- What are they building that seems unnecessary today?
+- What behavior change makes this inevitable?
+- What capabilities took them 10 years to build that suddenly matter?
+- Why is the current multiple wrong (too low OR too high)?
+- What narrative shift unlocks 10x multiple expansion?
+- What catalyst will make this obvious to everyone?
 
+FOUNDER-MARKET FIT BONUS (0-5 additional points):
+- Founder has unique insight from experience (2 points)
+- Building solution to problem they personally faced (1 point)
+- 10+ years preparing for this exact opportunity (1 point)
+- Obsessed with problem not solution (1 point)
 
+PART C: BUSINESS QUALITY (0-20 points) - 20%
+=============================================
 
-8. Capital Efficiency & Cash Generation (0-2 points)
+Note: For pre-revenue or <$100M revenue companies, score generously based on potential
 
-Can they self-fund growth or need constant capital raises?
-Do they have or have clear path to 20%+ FCF margins?
-Does each dollar invested yield >$3 in enterprise value?
-Can they grow revenue faster than OpEx?
+5. Revenue Quality & Durability (0-7 points)
+- Does the product become mission-critical and embedded?
+- Do they have 120%+ net revenue retention (land-and-expand)?
+- Are contracts multi-year with 90%+ gross renewal rates?
+- Are switching costs measured in years and millions of dollars?
 
-Score 0-2: (0=perpetual capital needs, 1=path to self-funding, 2=cash generation machine)
-9. Valuation Reality (0-2 points with possible -2 penalty)
+Score 0-7: (0-2=high churn, 3-4=solid retention, 5-7=deeply embedded/expanding)
+*For early stage: Score based on product stickiness potential*
 
-2 points: Exceptional value (e.g., <10x sales for 20%+ growth, <20x for 40%+ growth)
-1 point: Fair value (e.g., 10-20x for 20-30% growth, 20-40x for 40-60% growth)
-0 points: Expensive but justifiable (e.g., 40-60x for 60%+ growth with profitability)
--1 point: Overvalued (e.g., 60-100x sales, or >2x growth rate multiple)
--2 points: Uninvestable price (e.g., >100x sales or >3x growth rate multiple)
+6. Market Position & Competitive Dynamics (0-7 points)
+- Are they the default choice or heading there?
+- Do they have winner-take-most dynamics?
+- Is their competitive lead widening?
+- Would customers panic if they disappeared tomorrow?
 
+Score 0-7: (0-2=weak position, 3-4=solid competitor, 5-7=dominant/irreplaceable)
+*For early stage: Score based on early customer feedback and competitive advantages*
 
-Total Score: X/20
-Scoring Guide:
+7. Capital Efficiency & Cash Generation (0-6 points)
+- Can they self-fund growth or need constant capital raises?
+- Do they have or have clear path to 20%+ FCF margins?
+- Does each dollar invested yield >$3 in enterprise value?
+- Can they grow revenue faster than OpEx?
 
-18-20: Generational investment - exceptional company at great price - Back up the truck
-15-17: Strong buy - quality and value aligned - Build full position
-12-14: Buy - good opportunity - Start accumulating
-10-11: Watch list - interesting but wait for better entry - Wait for pullback
-8-9: Pass - either weak fundamentals or too expensive - Look elsewhere
-<8: Avoid - poor investment regardless of story - Hard pass
+Score 0-6: (0-2=perpetual capital needs, 3-4=path to self-funding, 5-6=cash generation machine)
+*For early stage: Score based on business model potential, not current burn*
 
+PART D: CURRENT VALUATION (0-10 points) - 10%
+==============================================
 
-Quick Screening Questions (for rapid evaluation):
+With possible -10 penalty for egregious overvaluation:
 
-Technical Test: Could 10 world-class engineers replicate this in 6 months with unlimited funding? (If yes → likely not a fit)
-Business Test: Will this company achieve Rule of 40+ while growing? (If no → be cautious)
-10x Test: Can this company be 10x larger in 10 years? (If no → limited upside)
-Moat Test: What would have to happen for this company to become irrelevant? (If easy → weak moat)
-Price Test: Is valuation less than 2x the growth rate? (If no → very expensive)
+Note: If company has narrative violation or early stage frontier bonus, expensive valuation matters less
 
+9-10 points: Exceptional value (<10x sales for 20%+ growth, <20x for 40%+ growth)
+7-8 points: Fair value (10-20x for 20-30% growth, 20-40x for 40-60% growth)
+5-6 points: Full valuation (30-50x for 50%+ growth)
+3-4 points: Expensive (50-75x for hypergrowth)
+0-2 points: Very expensive (75-100x sales)
+-5 to -10 points: Uninvestable (>100x sales or >3x growth rate multiple)
 
-Critical Elements to Also Consider (Not Scored):
-🚩 Red Flags:
+For early stage (<$100M revenue): Use EV/Revenue Run Rate or compare to similar stage companies
 
-Customer concentration >30%
-Founder/CEO departed recently
-Declining win rates or elongating sales cycles
-Key competitors gaining ground rapidly
-Regulatory risks that could destroy the business
-Technological disruption risk (their tech becoming obsolete)
+TOTAL SCORE: ___/100
+====================
 
-✅ Green Flags:
+SCORING GUIDE:
+85-100: Generational investment - will dominate the next decade
+70-84: Strong buy - positioned for sustained outperformance
+60-69: Buy - solid multi-year compounder
+50-59: Starter position or wait for better price
+40-49: Watch list only
+<40: Avoid
 
-Founder-led with high insider ownership
-Accelerating organic growth
-Expanding TAM faster than revenue growth
-Network effects getting stronger
-Government/regulatory tailwinds
+QUICK SCREENING QUESTIONS:
+1. Narrative Test: Is the market wrong about what this company really is?
+2. Catalyst Test: What catalyst will make this obvious in 2-3 years?
+3. Founder Test: Does the founder have unique insight others lack?
+4. Frontier Test: Are they building for a world that doesn't exist yet?
+5. Smart Money Test: Are top VCs/insiders buying aggressively?
 
+SCORING EXAMPLES:
+================
 
-Provide brief reasoning for each score and identify which of the reference companies (Rocket Lab, Nvidia, Anduril, Palantir, Databricks, Glean) they most resemble.
-Remember: The best investments combine:
+EARLY STAGE EXAMPLES (With Bonuses Applied):
+Anduril 2019 @ $1B valuation (78/100):
+- Technical: 18/20 (Lattice OS, autonomous systems)
+- Future Growth: 30 + 20 (early stage) + 10 (catalyst) = 60/50
+- Business: 5/20 (early revenue but strong potential)
+- Valuation: 5/10 (fair for potential)
+- WOULD HAVE CAUGHT IT!
 
-Hard technical problems that take years to solve
-Products that become mission-critical infrastructure
-Massive growth runways with expanding profitability
-Reasonable valuations relative to opportunity
+SpaceX 2008 @ $500M valuation (82/100):
+- Technical: 20/20 (reusable rockets)
+- Future Growth: 35 + 20 (early stage) + 15 (narrative) = 70/50
+- Business: 2/20 (no revenue yet)
+- Valuation: 10/10 (cheap in retrospect!)
+- WOULD HAVE CAUGHT IT!
 
-Companies scoring 15+ are rare - they represent the intersection of innovation, execution, market timing, and valuation that create multi-baggers."""
+INFLECTION POINT EXAMPLES:
+Netflix 2007 @ $1.2B market cap (76/100):
+- Technical: 8/20 (streaming tech)
+- Future Growth: 35 + 15 (narrative) + 10 (catalyst) = 60/50
+- Business: 10/20 (growing subs)
+- Valuation: 8/10 (very cheap)
+
+Nvidia 2021 @ $350B market cap (90/100):
+- Technical: 18/20 (CUDA ecosystem)
+- Future Growth: 42 + 10 (AI catalyst) = 52/50
+- Business: 16/20 (strong fundamentals)
+- Valuation: 4/10 (expensive but justified)
+
+Palantir 2022 @ $15B market cap (86/100):
+- Technical: 18/20 (Foundry platform)
+- Future Growth: 30 + 15 (narrative) + 10 (AI catalyst) = 55/50
+- Business: 14/20 (improving margins)
+- Valuation: 9/10 (8x sales was gift!)
+
+CURRENT MARKET EXAMPLES:
+Nvidia @ 30x sales today (87/100):
+- Technical: 18/20
+- Future Growth: 48/50 (AI dominance)
+- Business: 18/20
+- Valuation: 3/10
+
+Google @ 5x sales (58/100):
+- Technical: 17/20
+- Future Growth: 18/50 (size limits growth)
+- Business: 18/20
+- Valuation: 10/10
+
+KEY INSIGHTS:
+============
+The framework now catches:
+1. Early stage frontier companies (Anduril, SpaceX)
+2. Narrative violations before they're obvious (Netflix, Amazon)
+3. Catalyst-driven re-ratings (Nvidia pre-AI, Palantir pre-AI boom)
+4. Founder-market fit advantages
+5. Pre-consensus opportunities
+
+The biggest returns come from:
+- Being 2-3 years early on consensus
+- Identifying catalysts before they happen
+- Backing exceptional founders in frontier markets
+- Buying when narrative is wrong
+- Holding through the re-rating
+
+RED FLAGS THAT CAP SCORES:
+- Customer concentration >50%: Cap at 65/100
+- Founder departed (without clear succession): Cap at 60/100
+- Declining growth rate: -10 points on Future Growth
+- Losing market share: -5 points on Market Position
+- Regulatory risk that could kill business: -10 points overall
+- No path to profitability after 10 years: Cap at 50/100
+"""
         
         try:
             logger.debug(f"Requesting investment evaluation for {company_name}")
@@ -983,7 +1116,7 @@ Companies scoring 15+ are rare - they represent the intersection of innovation, 
             response = self.session.post(
                 f"{self.BASE_URL}/chat/completions",
                 json={
-                    "model": "sonar-pro",
+                    "model": "sonar-reasoning-pro",
                     "messages": [
                         {
                             "role": "user",
@@ -991,9 +1124,9 @@ Companies scoring 15+ are rare - they represent the intersection of innovation, 
                         }
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 2000
+                    "max_tokens": 20000
                 },
-                timeout=200
+                timeout=300
             )
             
             response.raise_for_status()
@@ -1002,8 +1135,10 @@ Companies scoring 15+ are rare - they represent the intersection of innovation, 
             # Extract evaluation from response
             if 'choices' in data and len(data['choices']) > 0:
                 evaluation = data['choices'][0]['message']['content'].strip()
-                # Remove citation markers
+                # Remove think tags and their content
                 import re
+                evaluation = re.sub(r'<think>.*?</think>', '', evaluation, flags=re.DOTALL).strip()
+                # Remove citation markers
                 evaluation = re.sub(r'\[\d+\]|\[\d*$', '', evaluation).strip()
                 # Clean markdown formatting
                 evaluation = clean_markdown(evaluation)
