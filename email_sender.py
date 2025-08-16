@@ -760,18 +760,6 @@ class EmailSender:
                         Investment Evaluation
                     </p>
                     {self.format_investment_evaluation(investment_evaluation)}
-                    
-                    <!-- Deep Research Button -->
-                    <div style="text-align: center; margin-top: 24px;">
-                        <a href="https://shredderman555.github.io/daily_top_gainers/trigger.html?symbol={symbol}&name={name.replace(' ', '%20')}&token=research2024" 
-                           style="display: inline-block; background-color: #0066cc; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 500;"
-                           target="_blank">
-                            Generate Deep Research Report
-                        </a>
-                        <p style="margin: 8px 0 0 0; color: #999; font-size: 12px;">
-                            Click for in-depth analysis (delivered via email in 2-5 minutes)
-                        </p>
-                    </div>
                 </div>
             """)
         
