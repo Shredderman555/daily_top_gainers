@@ -258,6 +258,84 @@ class PolygonClient:
         
         return results
     
+    def get_daily_price_target_changes(self, ticker: str, cutoff_date: datetime) -> List[Dict[str, Any]]:
+        """Get price target changes from the last 24 hours.
+        
+        Args:
+            ticker: Stock ticker symbol
+            cutoff_date: Only include changes after this date
+            
+        Returns:
+            List of price target changes with details
+        """
+        logger.debug(f"Fetching daily price target changes for {ticker}")
+        
+        changes = []
+        
+        try:
+            # Fetch recent analyst ratings
+            ratings = self.fetch_analyst_ratings(ticker, limit=20)
+            
+            for rating in ratings:
+                # Check if we have required fields
+                if not hasattr(rating, 'price_target') or not rating.price_target:
+                    continue
+                
+                # Parse date
+                rating_date = None
+                if hasattr(rating, 'date'):
+                    try:
+                        if isinstance(rating.date, str):
+                            rating_date = datetime.strptime(rating.date[:10], "%Y-%m-%d")
+                        else:
+                            rating_date = rating.date
+                    except:
+                        continue
+                
+                if not rating_date or rating_date < cutoff_date:
+                    continue
+                
+                # Get previous price target
+                previous_target = getattr(rating, 'previous_price_target', None)
+                if not previous_target:
+                    # If no previous target, skip (can't calculate change)
+                    continue
+                
+                # Calculate percentage change
+                change_pct = ((rating.price_target - previous_target) / previous_target) * 100
+                
+                # Determine change type
+                if change_pct > 0.1:
+                    change_type = 'Raised'
+                elif change_pct < -0.1:
+                    change_type = 'Lowered'
+                else:
+                    change_type = 'Reiterated'
+                
+                # Get analyst details
+                firm = getattr(rating, 'firm', None) or getattr(rating, 'analyst_firm', 'Unknown')
+                rating_value = getattr(rating, 'rating', None) or getattr(rating, 'rating_current', '')
+                action = getattr(rating, 'rating_action', None) or getattr(rating, 'action', 'Updates')
+                
+                changes.append({
+                    'ticker': ticker,
+                    'date': rating_date,
+                    'analyst': firm,
+                    'old_target': previous_target,
+                    'new_target': rating.price_target,
+                    'change_pct': change_pct,
+                    'change_type': change_type,
+                    'rating': rating_value,
+                    'action': action
+                })
+            
+            logger.debug(f"Found {len(changes)} price target changes for {ticker} in last 24 hours")
+            
+        except Exception as e:
+            logger.error(f"Error fetching daily price target changes for {ticker}: {e}")
+        
+        return changes
+    
     def __enter__(self):
         """Context manager entry."""
         return self

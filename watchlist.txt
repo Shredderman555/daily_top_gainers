@@ -1,0 +1,7 @@
+# Price Target Monitoring Watchlist
+# Add one ticker symbol per line
+# Lines starting with # are comments
+# Mega Cap Tech
+AAPL
+AMAT
+WULF

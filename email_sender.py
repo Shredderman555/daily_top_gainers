@@ -879,3 +879,235 @@ class EmailSender:
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
             return False
+    
+    def send_price_target_alert(self, recipient: str, changes: Dict[str, List[Dict[str, Any]]], 
+                                watchlist_count: int, dry_run: bool = False) -> bool:
+        """Send price target changes alert email.
+        
+        Args:
+            recipient: Recipient email address
+            changes: Dictionary with raises, cuts, and reiterations
+            watchlist_count: Number of stocks in watchlist
+            dry_run: If True, preview email without sending
+            
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        try:
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['From'] = self.sender_email
+            msg['To'] = recipient
+            
+            # Count changes
+            total_changes = (
+                len(changes.get('raises', [])) +
+                len(changes.get('cuts', [])) +
+                len(changes.get('reiterations', []))
+            )
+            
+            # Set subject
+            if total_changes > 0:
+                msg['Subject'] = f"📊 Daily Price Target Changes - {total_changes} Updates Today"
+            else:
+                msg['Subject'] = "📊 Daily Price Target Changes - No Updates Today"
+            
+            # Create HTML content
+            html_content = self.create_price_target_alert_html(changes, watchlist_count)
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            if dry_run:
+                logger.info("DRY RUN MODE - Email preview:")
+                logger.info(f"To: {recipient}")
+                logger.info(f"Subject: {msg['Subject']}")
+                logger.info(f"Total changes: {total_changes}")
+                if total_changes > 0:
+                    logger.info(f"  - Raises: {len(changes.get('raises', []))}")
+                    logger.info(f"  - Cuts: {len(changes.get('cuts', []))}")
+                    logger.info(f"  - Reiterations: {len(changes.get('reiterations', []))}")
+                return True
+            
+            # Send email
+            logger.debug(f"Connecting to SMTP server {self.smtp_server}:{self.smtp_port}")
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.sender_email, self.sender_password)
+                server.send_message(msg)
+            
+            logger.debug(f"Price target alert email sent successfully to {recipient}")
+            return True
+            
+        except smtplib.SMTPAuthenticationError:
+            logger.error("SMTP authentication failed. Check email and password.")
+            return False
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error occurred: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to send price target alert email: {e}")
+            return False
+    
+    def create_price_target_alert_html(self, changes: Dict[str, List[Dict[str, Any]]], 
+                                       watchlist_count: int) -> str:
+        """Create HTML content for price target alert email.
+        
+        Args:
+            changes: Dictionary with raises, cuts, and reiterations
+            watchlist_count: Number of stocks in watchlist
+            
+        Returns:
+            HTML string for email body
+        """
+        from datetime import datetime
+        
+        raises = changes.get('raises', [])
+        cuts = changes.get('cuts', [])
+        reiterations = changes.get('reiterations', [])
+        
+        total_changes = len(raises) + len(cuts) + len(reiterations)
+        
+        # Format individual change sections
+        raises_html = ""
+        if raises:
+            raises_html = """
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #4CAF50; margin: 0 0 15px 0; font-size: 18px;">📈 RAISES</h3>
+            """
+            for change in raises:
+                upside_str = f"{change['upside']:.1f}%" if change.get('upside') is not None else "N/A"
+                upside_color = "#4CAF50" if change.get('upside', 0) > 0 else "#f44336"
+                
+                raises_html += f"""
+                    <div style="background-color: #fff; border-left: 4px solid #4CAF50; padding: 12px; margin-bottom: 12px;">
+                        <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">
+                            {change['ticker']} - {change.get('company_name', change['ticker'])}
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
+                            • <strong>{change['analyst']}</strong>: ${change['old_target']:.0f} → ${change['new_target']:.0f} 
+                            <span style="color: #4CAF50; font-weight: 600;">(+{change['change_pct']:.1f}%)</span>
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">
+                            • Rating: {change.get('rating', 'N/A')}
+                        </p>
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            • Current: ${change.get('current_price', 0):.2f} | 
+                            Upside: <span style="color: {upside_color};">{upside_str}</span>
+                        </p>
+                    </div>
+                """
+            raises_html += "</div>"
+        
+        cuts_html = ""
+        if cuts:
+            cuts_html = """
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #f44336; margin: 0 0 15px 0; font-size: 18px;">📉 CUTS</h3>
+            """
+            for change in cuts:
+                upside_str = f"{change['upside']:.1f}%" if change.get('upside') is not None else "N/A"
+                upside_color = "#4CAF50" if change.get('upside', 0) > 0 else "#f44336"
+                
+                cuts_html += f"""
+                    <div style="background-color: #fff; border-left: 4px solid #f44336; padding: 12px; margin-bottom: 12px;">
+                        <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">
+                            {change['ticker']} - {change.get('company_name', change['ticker'])}
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
+                            • <strong>{change['analyst']}</strong>: ${change['old_target']:.0f} → ${change['new_target']:.0f} 
+                            <span style="color: #f44336; font-weight: 600;">({change['change_pct']:.1f}%)</span>
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">
+                            • Rating: {change.get('rating', 'N/A')}
+                        </p>
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            • Current: ${change.get('current_price', 0):.2f} | 
+                            Upside: <span style="color: {upside_color};">{upside_str}</span>
+                        </p>
+                    </div>
+                """
+            cuts_html += "</div>"
+        
+        reiterations_html = ""
+        if reiterations:
+            reiterations_html = """
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #2196F3; margin: 0 0 15px 0; font-size: 18px;">➡️ REITERATIONS</h3>
+            """
+            for change in reiterations:
+                upside_str = f"{change['upside']:.1f}%" if change.get('upside') is not None else "N/A"
+                upside_color = "#4CAF50" if change.get('upside', 0) > 0 else "#f44336"
+                
+                reiterations_html += f"""
+                    <div style="background-color: #fff; border-left: 4px solid #2196F3; padding: 12px; margin-bottom: 12px;">
+                        <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">
+                            {change['ticker']} - {change.get('company_name', change['ticker'])}
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
+                            • <strong>{change['analyst']}</strong>: ${change['new_target']:.0f} (unchanged)
+                        </p>
+                        <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">
+                            • Rating: {change.get('rating', 'N/A')}
+                        </p>
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            • Current: ${change.get('current_price', 0):.2f} | 
+                            Upside: <span style="color: {upside_color};">{upside_str}</span>
+                        </p>
+                    </div>
+                """
+            reiterations_html += "</div>"
+        
+        # Create summary stats
+        summary_html = ""
+        if total_changes > 0:
+            summary_html = f"""
+                <div style="background-color: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 25px; text-align: center;">
+                    <p style="margin: 0; color: #333; font-size: 16px;">
+                        <strong>Summary:</strong> 
+                        <span style="color: #4CAF50;">{len(raises)} Raises</span> | 
+                        <span style="color: #f44336;">{len(cuts)} Cuts</span> | 
+                        <span style="color: #2196F3;">{len(reiterations)} Reiterations</span>
+                    </p>
+                    <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">
+                        Monitoring {watchlist_count} stocks from your watchlist
+                    </p>
+                </div>
+            """
+        else:
+            summary_html = f"""
+                <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <p style="margin: 0; color: #666; font-size: 16px;">
+                        No price target changes in the last 24 hours
+                    </p>
+                    <p style="margin: 8px 0 0 0; color: #999; font-size: 14px;">
+                        Monitoring {watchlist_count} stocks from your watchlist
+                    </p>
+                </div>
+            """
+        
+        # Combine all sections
+        html = f"""
+        <html>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 700px; margin: 0 auto; padding: 40px 20px;">
+                    <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">
+                        Price Target Changes - Last 24 Hours
+                    </h2>
+                    
+                    {summary_html}
+                    
+                    {raises_html}
+                    {cuts_html}
+                    {reiterations_html}
+                    
+                    <div style="border-top: 1px solid #e0e0e0; margin-top: 30px; padding-top: 20px;">
+                        <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                            Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
+                        </p>
+                    </div>
+                </div>
+            </body>
+        </html>
+        """
+        
+        return html
